@@ -1,4 +1,5 @@
-from utils.deploy_utils import *
+from utils.w3_utils import *
+
 
 class BicoCertoRegistry:
     

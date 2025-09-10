@@ -1,6 +1,6 @@
-from utils.deploy_utils import *
-from model.bico_certo_main import *
-from model.bico_certo_registry import *
+from utils.w3_utils import *
+from model.bico_certo_main import BicoCerto
+from model.bico_certo_registry import BicoCertoRegistry
 import datetime
 
 bicoCertoRegistry = BicoCertoRegistry(deploy=True)
@@ -25,7 +25,6 @@ timestamp_float = data.timestamp()
 timestamp_int = int(timestamp_float)
 
 job_id = bicoCerto.create_job(w3.eth.accounts[2], timestamp_int, "web development", "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG", 5, w3.eth.accounts[1])
-
 
 
 print(bicoCerto.get_job(job_id))

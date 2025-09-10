@@ -1,7 +1,8 @@
-from utils.deploy_utils import *
-from model.bico_certo_registry import *
+from utils.w3_utils import *
+from model.bico_certo_registry import BicoCertoRegistry
 from dataclasses import dataclass
 from enum import Enum
+
 
 # Enums
 class JobStatus(Enum):
@@ -75,8 +76,7 @@ class BicoCerto:
             return
         self.contract = get_instance("BicoCerto", contract_address)
         self.registry = self.contract.functions.getRegistryAddress().call()
-        
-    
+
     def create_job(
         self,
         provider: str,
@@ -85,7 +85,7 @@ class BicoCerto:
         ipfs_hash: str,
         value: int,
         from_address: str
-    ) -> str:
+    ) -> bytes:
         """Create a new job through the main contract"""
         
         tx = self.contract.functions.createJob(
@@ -97,7 +97,6 @@ class BicoCerto:
             'from': from_address,
             'value': self.w3.to_wei(value, 'ether')
         })
-        
 
         receipt = w3.eth.wait_for_transaction_receipt(tx)
         # signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
