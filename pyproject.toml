@@ -12,6 +12,8 @@ package-mode = false
 python = ">=3.12,<4"
 web3 = "^7.12.1"
 py-solc-x = "^2.0.4"
+fastapi = "^0.116.1"
+uvicorn = {extras = ["standard"], version = "^0.35.0"}
 
 
 [build-system]

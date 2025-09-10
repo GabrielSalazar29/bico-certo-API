@@ -1,4 +1,11 @@
-from utils.w3_utils import *
+import sys
+import os
+
+# Adicionar o diretório raiz do projeto ao Python path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+from util.w3_util import *
 from model.bico_certo_main import BicoCerto
 from model.bico_certo_registry import BicoCertoRegistry
 
@@ -51,25 +58,5 @@ def deploy_all_contracts():
     }
 
 
-# def create_sample_job(bico_certo):
-#     """Cria um job de exemplo"""
-#     data = datetime.datetime(2025, 9, 11, 0, 0, 0)
-#     timestamp_int = int(data.timestamp())
-#
-#     job_id = bico_certo.create_job(
-#         w3.eth.accounts[2],
-#         timestamp_int,
-#         "web development",
-#         "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
-#         5,
-#         w3.eth.accounts[1]
-#     )
-#
-#     print(f"✅ Job criado com ID: {job_id}")
-#     print(f"Detalhes do Job: {bico_certo.get_job(job_id)}")
-#     return job_id
-
-
-# Script principal
 if __name__ == "__main__":
     contracts = deploy_all_contracts()

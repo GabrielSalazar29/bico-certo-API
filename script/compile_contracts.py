@@ -7,7 +7,7 @@ def compile_contracts():
     """
     Compila todos os contratos Solidity do projeto usando a versão especificada do solc.
     """
-    # Define o diretório raiz do projeto (um nível acima da pasta scripts)
+    # Define o diretório raiz do projeto (um nível acima da pasta script)
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     # Define os caminhos relativos ao diretório raiz

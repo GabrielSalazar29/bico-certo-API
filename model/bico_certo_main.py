@@ -1,7 +1,9 @@
-from utils.w3_utils import *
+from util.w3_util import *
 from model.bico_certo_registry import BicoCertoRegistry
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
+from typing import Dict, Any
+from datetime import datetime
 
 
 # Enums
@@ -35,6 +37,27 @@ class Job:
     ipfs_hash: str
     client_rating: int
     provider_rating: int
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converte o Job para dicionário"""
+        data = asdict(self)
+        # Converte bytes para hex string
+        data['id'] = data['id'].hex() if isinstance(data['id'], bytes) else data['id']
+        # Converte enum para valor
+        data['status'] = self.status.value if isinstance(self.status, JobStatus) else self.status
+        # Converte timestamps para formato legível (opcional)
+        data['created_at_formatted'] = datetime.fromtimestamp(
+            self.created_at).isoformat() if self.created_at > 0 else None
+        data['accepted_at_formatted'] = datetime.fromtimestamp(
+            self.accepted_at).isoformat() if self.accepted_at > 0 else None
+        data['completed_at_formatted'] = datetime.fromtimestamp(
+            self.completed_at).isoformat() if self.completed_at > 0 else None
+        data['deadline_formatted'] = datetime.fromtimestamp(self.deadline).isoformat() if self.deadline > 0 else None
+        return data
+
+    def to_json(self) -> str:
+        """Converte o Job para JSON string"""
+        return json.dumps(self.to_dict(), indent=2)
 
 
 @dataclass
@@ -182,15 +205,15 @@ class BicoCerto:
         tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         return tx_hash.hex()
     
-    def get_job(self, job_id: bytes) -> Job:
+    def get_job(self, job_id: str) -> Job:
         """Get job details through the main contract"""
-        job_data = self.contract.functions.getJob(job_id).call()
+        job_data = self.contract.functions.getJob(bytes.fromhex(job_id)).call()
         return Job(
             id=job_data[0],
             client=job_data[1],
             provider=job_data[2],
-            amount=job_data[3],
-            platform_fee=job_data[4],
+            amount=w3.from_wei(job_data[3], 'ether'),
+            platform_fee=w3.from_wei(job_data[4], 'ether'),
             created_at=job_data[5],
             accepted_at=job_data[6],
             completed_at=job_data[7],

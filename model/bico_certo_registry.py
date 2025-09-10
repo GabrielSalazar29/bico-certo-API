@@ -1,4 +1,4 @@
-from utils.w3_utils import *
+from util.w3_util import *
 
 
 class BicoCertoRegistry:

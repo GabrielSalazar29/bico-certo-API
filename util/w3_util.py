@@ -9,12 +9,12 @@ w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))
 w3.eth.default_account = w3.eth.accounts[0]
 
 # Arquivo onde os endereços serão salvos
-CONTRACTS_FILE = "../deployed_contracts.json"
+CONTRACTS_FILE = "./deployed_contracts.json"
 
 
 def deploy_contract(contract_name, *args):
     print(f"Fazendo deploy de {contract_name}...")
-    build_path = '../build'
+    build_path = './build'
     
     with open(os.path.join(build_path, f'{contract_name}_sol_{contract_name}.abi'), 'r') as f:
         abi = json.load(f)
@@ -31,7 +31,7 @@ def deploy_contract(contract_name, *args):
 
 
 def get_instance(contract_name, contract_address):
-    build_path = '../build'
+    build_path = './build'
     
     with open(os.path.join(build_path, f'{contract_name}_sol_{contract_name}.abi'), 'r') as f:
         abi = json.load(f)
