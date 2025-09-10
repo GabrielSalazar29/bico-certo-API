@@ -65,7 +65,6 @@ class BicoCerto:
     
     def __init__(
         self,
-        contract_address: str = "",
         deploy: bool = False,
         registry_address: str = "",
     ):
@@ -74,8 +73,9 @@ class BicoCerto:
             self.contract = deploy_contract("BicoCerto", registry_address)
             self.registry = BicoCertoRegistry(contract_address=registry_address)
             return
-        self.contract = get_instance("BicoCerto", contract_address)
-        self.registry = self.contract.functions.getRegistryAddress().call()
+        contract_addresses = load_contracts_addresses()
+        self.contract = get_instance("BicoCerto", contract_addresses["BicoCerto"])
+        self.registry = self.registry = BicoCertoRegistry(contract_address=contract_addresses["BicoCertoRegistry"])
 
     def create_job(
         self,

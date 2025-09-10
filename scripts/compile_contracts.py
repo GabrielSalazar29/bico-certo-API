@@ -14,7 +14,7 @@ def compile_contracts():
     contracts_dir = os.path.join(project_root, 'contracts')
     build_dir = os.path.join(project_root, 'build')
     
-    # Defina a versão do solc a ser utilizada, compatível com as declarações de pragma
+    # Define a versão do solc a ser utilizada, compatível com as declarações de pragma
     solc_version = '0.8.20'
     
     # Instala e configura a versão do solc
@@ -74,13 +74,11 @@ def compile_contracts():
                 abi_path = os.path.join(build_dir, f'{contract_name}_sol_{contract_name}.abi')
                 with open(abi_path, 'w') as f:
                     json.dump(contract_data['abi'], f, indent=4)
-                    print(f"  ✓ ABI salvo: {os.path.basename(abi_path)}")
                 
                 # Escreve o BIN
                 bin_path = os.path.join(build_dir, f'{contract_name}_sol_{contract_name}.bin')
                 with open(bin_path, 'w') as f:
                     f.write(contract_data['bin'])
-                    print(f"  ✓ BIN salvo: {os.path.basename(bin_path)}")
 
         except Exception as e:
             print(f"Erro ao compilar {contract_file}: {e}")
@@ -88,7 +86,7 @@ def compile_contracts():
             if 'original_cwd' in locals():
                 os.chdir(original_cwd)
 
-    print("\n✅ Compilação concluída com sucesso!")
+    print("\nCompilação concluída com sucesso!")
     print(f"Arquivos compilados salvos em: {build_dir}")
 
 

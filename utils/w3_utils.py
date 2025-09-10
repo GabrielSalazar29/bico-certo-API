@@ -8,6 +8,9 @@ w3 = Web3(Web3.HTTPProvider('http://127.0.0.1:8545'))
 # Usar a primeira conta do Ganache como default
 w3.eth.default_account = w3.eth.accounts[0]
 
+# Arquivo onde os endereços serão salvos
+CONTRACTS_FILE = "../deployed_contracts.json"
+
 
 def deploy_contract(contract_name, *args):
     print(f"Fazendo deploy de {contract_name}...")
@@ -39,3 +42,19 @@ def get_instance(contract_name, contract_address):
 def set_default_account(account_address):
     w3.eth.default_account = account_address
     print(f"Conta padrão definida para: {account_address}")
+
+
+def save_contracts_addresses(contracts_dict):
+    """Salva os endereços dos contratos em um arquivo JSON"""
+    with open(CONTRACTS_FILE, 'w') as f:
+        json.dump(contracts_dict, f, indent=2)
+
+
+def load_contracts_addresses():
+    """Carrega os endereços dos contratos do arquivo JSON"""
+    if os.path.exists(CONTRACTS_FILE):
+        with open(CONTRACTS_FILE, 'r') as f:
+            return json.load(f)
+    else:
+        print(f"Arquivo {CONTRACTS_FILE} não encontrado")
+        return None
