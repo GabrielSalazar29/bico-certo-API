@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "bico-certo"
+version = "0.1.0"
+description = ""
+authors = [
+    "Salazar <gsaalcantara@gmail.com>"
+]
+package-mode = false
+
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4"
+web3 = "^7.12.1"
+py-solc-x = "^2.0.4"
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
