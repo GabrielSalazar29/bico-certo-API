@@ -5,9 +5,9 @@ import os
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from util.w3_util import *
-from model.bico_certo_main import BicoCerto
-from model.bico_certo_registry import BicoCertoRegistry
+from app.util.w3_util import *
+from app.model.bico_certo_main import BicoCerto
+from app.model.bico_certo_registry import BicoCertoRegistry
 
 
 def deploy_all_contracts():

@@ -29,7 +29,7 @@
 6. **Iniciar o uvicorn:**
 
     ```bash
-    poetry run uvicorn controller.job_controller:app --reload
+    poetry run uvicorn app.controller.job_controller:app --reload
     ```
 
 
@@ -67,7 +67,7 @@ Cria um novo job/serviço no sistema.
   "deadline": "20-9-2025",
   "service_type": "Pintar parede",
   "value": 10,
-  "ipfs_hash": "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+  "ipfs_hash": "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
 }
 ```
 
