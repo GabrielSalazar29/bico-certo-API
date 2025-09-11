@@ -1,4 +1,3 @@
-# app/api/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from ..config.database import get_db
@@ -8,17 +7,17 @@ from ..schema.user import UserCreate, UserResponse
 from ..schema.auth import LoginRequest, RefreshRequest, TokenResponse
 from ..util.security import hash_password, verify_password
 from ..util.device import generate_fingerprint
-from ..auth.jwt_handler import create_access_token
 from ..auth.dependencies import get_current_user
 from ..auth.jwt_handler import create_tokens
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 from typing import List
+from ..middleware.rate_limiter import login_limiter, register_limiter
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(user_data: UserCreate, db: Session = Depends(get_db), _: bool = Depends(register_limiter)):
     # Verificar se email já existe
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
@@ -42,16 +41,42 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
+def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db), _: bool = Depends(login_limiter)):
     # Buscar usuário
     user = db.query(User).filter(User.email == credentials.email).first()
 
+    # Verificar se conta está bloqueada
+    if user and user.locked_until and user.locked_until.replace(tzinfo=UTC) > datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Conta bloqueada até {user.locked_until.strftime('%H:%M:%S')}"
+        )
+
     # Verificar se existe e senha está correta
     if not user or not verify_password(credentials.password, user.password_hash):
+        if user:
+            # Incrementar tentativas falhas
+            user.failed_login_attempts += 1
+
+            # Bloquear após 5 tentativas
+            if user.failed_login_attempts >= 5:
+                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Conta bloqueada por 15 minutos devido a múltiplas tentativas falhas"
+                )
+
+            db.commit()
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos"
         )
+
+    # Reset tentativas em login bem-sucedido
+    user.failed_login_attempts = 0
+    user.locked_until = None
 
     # Verificar se está ativo
     if not user.is_active:

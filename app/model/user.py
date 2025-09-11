@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Table, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Table, ForeignKey, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from ..config.database import Base
@@ -16,6 +16,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Security
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
 
 
 class RefreshToken(Base):

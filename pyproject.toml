@@ -22,6 +22,8 @@ pydantic-settings = "^2.10.1"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 python-multipart = "^0.0.20"
+redis = "^6.4.0"
+slowapi = "^0.1.9"
 
 
 [build-system]

@@ -1,4 +1,3 @@
-# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config.settings import settings
@@ -29,7 +28,6 @@ def health_check():
     return {"status": "healthy"}
 
 
-# app/main.py (adicionar no final)
 from .api import auth
 from .controller import job_controller
 from .config.database import engine
