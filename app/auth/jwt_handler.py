@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any
+import secrets
 from jose import JWTError, jwt
 from ..config.settings import settings
 
@@ -28,3 +29,25 @@ def decode_token(token: str) -> Dict[str, Any]:
         return payload
     except JWTError:
         return None
+
+
+def create_refresh_token() -> tuple[str, datetime]:
+    """Cria refresh token e retorna (token, expiration)"""
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(UTC) + timedelta(days=7)
+    return token, expires_at
+
+
+def create_tokens(user_id: str, email: str) -> dict:
+    """Cria access e refresh tokens"""
+    access_token = create_access_token(
+        data={"sub": user_id, "email": email}
+    )
+    refresh_token, expires_at = create_refresh_token()
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "refresh_expires_at": expires_at,
+        "token_type": "bearer"
+    }

@@ -5,10 +5,13 @@ from ..config.database import get_db
 from ..model.user import User
 from ..schema.user import UserCreate, UserResponse
 from ..util.security import hash_password
-from ..schema.auth import LoginRequest, LoginResponse
+from ..schema.auth import LoginRequest, RefreshRequest, TokenResponse
 from ..util.security import verify_password
 from ..auth.jwt_handler import create_access_token
 from ..auth.dependencies import get_current_user
+from ..model.user import RefreshToken
+from ..auth.jwt_handler import create_tokens
+from datetime import datetime, UTC
 
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -38,7 +41,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=TokenResponse)
 def login(credentials: LoginRequest, db: Session = Depends(get_db)):
     # Buscar usuário
     user = db.query(User).filter(User.email == credentials.email).first()
@@ -57,15 +60,63 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
             detail="Usuário inativo"
         )
 
-    # Criar token JWT
-    access_token = create_access_token(
-        data={"sub": user.id, "email": user.email}
+    # Criar tokens
+    tokens = create_tokens(user.id, user.email)
+
+    # Salvar refresh token no banco
+    refresh_token = RefreshToken(
+        user_id=user.id,
+        token=tokens["refresh_token"],
+        expires_at=tokens["refresh_expires_at"]
+    )
+    db.add(refresh_token)
+    db.commit()
+
+    return TokenResponse(
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"]
     )
 
-    return LoginResponse(
-        access_token=access_token,
-        user_id=user.id,
-        email=user.email
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
+    # Buscar refresh token
+    stored_token = db.query(RefreshToken).filter(
+        RefreshToken.token == request.refresh_token,
+        RefreshToken.revoked == False
+    ).first()
+
+    if not stored_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido"
+        )
+
+    # Verificar se expirou
+    if stored_token.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token expirado"
+        )
+
+    # Revogar token antigo
+    stored_token.revoked = True
+
+    # Criar novos tokens
+    tokens = create_tokens(stored_token.user_id, stored_token.user.email)
+
+    # Salvar novo refresh token
+    new_refresh_token = RefreshToken(
+        user_id=stored_token.user_id,
+        token=tokens["refresh_token"],
+        expires_at=tokens["refresh_expires_at"]
+    )
+    db.add(new_refresh_token)
+    db.commit()
+
+    return TokenResponse(
+        access_token=tokens["access_token"],
+        refresh_token=tokens["refresh_token"]
     )
 
 
