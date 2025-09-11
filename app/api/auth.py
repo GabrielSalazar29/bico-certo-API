@@ -5,6 +5,8 @@ from ..config.database import get_db
 from ..model.user import User
 from ..schema.user import UserCreate, UserResponse
 from ..util.security import hash_password
+from ..schema.auth import LoginRequest, LoginResponse
+from ..util.security import verify_password
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -31,3 +33,29 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
 
     return user
+
+
+@router.post("/login", response_model=LoginResponse)
+def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+    # Buscar usuário
+    user = db.query(User).filter(User.email == credentials.email).first()
+
+    # Verificar se existe e senha está correta
+    if not user or not verify_password(credentials.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos"
+        )
+
+    # Verificar se está ativo
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuário inativo"
+        )
+
+    return LoginResponse(
+        message="Login realizado com sucesso",
+        user_id=user.id,
+        email=user.email
+    )
