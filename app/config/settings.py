@@ -11,8 +11,10 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite:///./test.db"  # Começar com SQLite
 
-    # Security (vamos adicionar mais tarde)
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    # JWT
+    SECRET_KEY: str = "your-secret-key-here-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"

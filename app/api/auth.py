@@ -7,6 +7,9 @@ from ..schema.user import UserCreate, UserResponse
 from ..util.security import hash_password
 from ..schema.auth import LoginRequest, LoginResponse
 from ..util.security import verify_password
+from ..auth.jwt_handler import create_access_token
+from ..auth.dependencies import get_current_user
+
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -54,8 +57,18 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
             detail="Usuário inativo"
         )
 
+    # Criar token JWT
+    access_token = create_access_token(
+        data={"sub": user.id, "email": user.email}
+    )
+
     return LoginResponse(
-        message="Login realizado com sucesso",
+        access_token=access_token,
         user_id=user.id,
         email=user.email
     )
+
+
+@router.get("/me", response_model=UserResponse)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
