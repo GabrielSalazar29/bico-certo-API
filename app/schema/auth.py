@@ -1,9 +1,5 @@
 from pydantic import BaseModel, EmailStr
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+from typing import Optional
 
 
 class LoginResponse(BaseModel):
@@ -21,3 +17,17 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class DeviceInfo(BaseModel):
+    device_id: str
+    platform: Optional[str] = None
+    model: Optional[str] = None
+    os_version: Optional[str] = None
+    app_version: Optional[str] = None
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+    device_info: DeviceInfo
