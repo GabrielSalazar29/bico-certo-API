@@ -1,13 +1,13 @@
 import datetime
-from model.bico_certo_main import BicoCerto
-from fastapi import FastAPI
+from app.model.bico_certo_main import BicoCerto
+from fastapi import APIRouter
 
-app = FastAPI()
+router = APIRouter(prefix="/jobs", tags=["JobManager"])
 bico_certo = BicoCerto()
 
 
-@app.post("/jobs/createJob")
-def read_root(provider_address: str,
+@router.post("/createJob")
+def create_job(provider_address: str,
               from_address: str,
               deadline: str,
               service_type: str,
@@ -28,10 +28,9 @@ def read_root(provider_address: str,
         from_address
     )
 
-    return job_id.hex()
+    return {"job_id": job_id.hex()}
 
 
-@app.post("/jobs/")
-def read_root(job_id: str):
+@router.post("/")
+def get_job(job_id: str):
     return bico_certo.get_job(job_id).to_dict()
-

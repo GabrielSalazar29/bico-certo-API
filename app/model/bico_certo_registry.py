@@ -1,4 +1,4 @@
-from util.w3_util import *
+from app.util.w3_util import *
 
 
 class BicoCertoRegistry:

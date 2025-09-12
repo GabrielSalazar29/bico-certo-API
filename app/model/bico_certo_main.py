@@ -1,5 +1,5 @@
-from util.w3_util import *
-from model.bico_certo_registry import BicoCertoRegistry
+from app.util.w3_util import *
+from app.model.bico_certo_registry import BicoCertoRegistry
 from dataclasses import dataclass, asdict
 from enum import Enum
 from typing import Dict, Any
