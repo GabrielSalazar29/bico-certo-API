@@ -27,21 +27,18 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=APIResponse)
 def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db), _: bool = Depends(register_limiter)):
 
-    # 1. VALIDAR EMAIL
     if not EmailValidator.validate(user_data.email):
         raise ValidationException(
             detail="Formato de email inválido",
             field="email"
         )
 
-    # 2. VERIFICAR SE É EMAIL DESCARTÁVEL
     if EmailValidator.is_disposable(user_data.email):
         raise ValidationException(
             detail="Emails temporários não são permitidos",
             field="email"
         )
 
-    # 3. VALIDAR FORÇA DA SENHA
     is_valid, error_message = PasswordValidator.validate(user_data.password)
     if not is_valid:
         raise ValidationException(
@@ -49,10 +46,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             field="password"
         )
 
-    # Verificar se email já existe
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
-        # LOG DE TENTATIVA DE REGISTRO DUPLICADO
         AuditLogger.log_auth_event(
             event_type="register_duplicate_attempt",
             email=user_data.email,
@@ -66,7 +61,6 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             field="email"
         )
 
-    # Criar novo usuário
     try:
         user = User(
             email=user_data.email,
@@ -78,7 +72,6 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
         db.commit()
         db.refresh(user)
 
-        # 6. LOG DE SUCESSO
         AuditLogger.log_auth_event(
             event_type="register",
             user_id=user.id,
@@ -87,7 +80,6 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             success=True
         )
 
-        # 7. RETORNAR RESPOSTA PADRONIZADA
         return APIResponse.success_response(
             data={
                 "user_id": user.id,
@@ -402,7 +394,7 @@ async def logout(
     else:
         # LOGOUT APENAS DA SESSÃO ATUAL
         # Por simplicidade, vamos invalidar o último refresh token
-        # Em produção, você rastrearia qual token está sendo usado
+        # Em produção, rastrear qual token está sendo usado
 
         AuditLogger.log_auth_event(
             event_type="logout",

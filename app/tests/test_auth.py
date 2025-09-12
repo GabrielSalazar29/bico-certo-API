@@ -2,6 +2,7 @@
 Testes automatizados para os endpoints de autenticação
 Arquivo: tests/test_auth.py
 """
+from typing import Dict
 
 import pytest
 from fastapi.testclient import TestClient
@@ -188,6 +189,29 @@ class TestRegister:
             response = client.post("/auth/register", json=sample_user_data)
             assert response.status_code == 429
 
+    def test_register_missing_fields(self, client: TestClient):
+        """Teste com campos faltando"""
+        # Sem email
+        response = client.post("/auth/register", json={
+            "full_name": "Test User",
+            "password": "ValidPass123!"
+        })
+        assert response.status_code == 422
+
+        # Sem password
+        response = client.post("/auth/register", json={
+            "email": "test@example.com",
+            "full_name": "Test User"
+        })
+        assert response.status_code == 422
+
+        # Sem full_name
+        response = client.post("/auth/register", json={
+            "email": "test@example.com",
+            "password": "ValidPass123!"
+        })
+        assert response.status_code == 422
+
 
 # ==================== TESTES DE LOGIN ====================
 
@@ -310,6 +334,16 @@ class TestLogin:
         assert device is not None
         assert device.platform == sample_device_info["platform"]
         assert device.model == sample_device_info["model"]
+
+    def test_login_missing_device_info(self, client: TestClient, sample_user_data):
+        """Teste de login sem informações do dispositivo"""
+        response = client.post("/auth/login", json={
+            "email": sample_user_data["email"],
+            "password": sample_user_data["password"]
+        })
+
+        # Deve falhar na validação
+        assert response.status_code == 422
 
 
 # ==================== TESTES DE REFRESH TOKEN ====================
@@ -769,6 +803,47 @@ class TestSecurity:
         )
 
         assert response.status_code == 401
+
+# ==================== TESTES DE Rate Limiting ====================
+
+
+class TestRateLimiting:
+    """Testes para rate limiting"""
+
+    def test_login_rate_limit(self, client, sample_device_info):
+        """Teste de rate limit no login"""
+        # Rate limit: 5 tentativas em 5 minutos
+        device_info = sample_device_info
+
+        for i in range(7):
+            response = client.post("/auth/login", json={
+                "email": "test@example.com",
+                "password": "wrong",
+                "device_info": device_info
+            })
+            teste = response.json()
+            if i < 5:
+                # Primeiras 5 tentativas devem passar (mesmo com erro de auth)
+                assert response.status_code in [401, 403]
+            else:
+                # Após 5 tentativas, deve retornar rate limit
+                assert response.status_code == 429
+                assert "Muitas tentativas" in response.json()["detail"]
+                assert "retry-after" in response.headers
+
+    def test_register_rate_limit(self, client, sample_user_data):
+        """Teste de rate limit no registro"""
+        # Rate limit: 3 registros por hora
+
+        for i in range(5):
+            response = client.post("/auth/register", json=sample_user_data)
+
+            if i < 3:
+                # Primeiros 3 devem passar
+                assert response.status_code == 200
+            else:
+                # Após 3, deve bloquear
+                assert response.status_code == 429
 
 
 if __name__ == "__main__":

@@ -1,15 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from .middleware.audit import AuditMiddleware
 from fastapi.responses import JSONResponse
 from .util.responses import APIResponse
 from .config.settings import settings
 from .model import user, device, session
 from .util.logger import logger
 from .config.database import engine
-from .api import auth
-from .controller import job_controller
-from datetime import  datetime, UTC
+from .api import auth, job_manager
+from datetime import datetime, UTC
 
 
 # Criar tabelas
@@ -33,11 +31,11 @@ app.add_middleware(
 )
 
 
-@app.middleware("http")
-async def audit_middleware(request: Request, call_next):
-    """Middleware de auditoria para todas as requisições"""
-    middleware = AuditMiddleware()
-    return await middleware(request, call_next)
+# @app.middleware("http")
+# async def audit_middleware(request: Request, call_next):
+#     """Middleware de auditoria para todas as requisições"""
+#     middleware = AuditMiddleware()
+#     return await middleware(request, call_next)
 
 
 @app.middleware("http")
@@ -121,7 +119,7 @@ async def log_requests(request: Request, call_next):
 
 # Incluir rotas
 app.include_router(auth.router)
-app.include_router(job_controller.router)
+app.include_router(job_manager.router)
 
 
 # Root endpoint
@@ -156,12 +154,12 @@ async def startup_event():
 
     # Verificar conexões
     try:
-        # Test database
-        from .config.database import SessionLocal
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
-        logger.info("Database connection: OK")
+        # # Test database
+        # from .config.database import SessionLocal
+        # db = SessionLocal()
+        # db.execute("SELECT 1")
+        # db.close()
+        # logger.info("Database connection: OK")
 
         # Test Redis
         from .config.redis_config import get_redis

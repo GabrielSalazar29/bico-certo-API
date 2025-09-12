@@ -1,4 +1,3 @@
-# app/utils/responses.py
 from typing import Any, Optional, Dict
 from pydantic import BaseModel
 
