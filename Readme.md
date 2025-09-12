@@ -29,7 +29,7 @@
 6. **Iniciar o uvicorn:**
 
     ```bash
-    poetry run uvicorn app.controller.job_controller:app --reload
+    poetry run uvicorn app.main:app --reload
     ```
 
 
