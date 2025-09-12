@@ -24,6 +24,11 @@ python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 python-multipart = "^0.0.20"
 redis = "^6.4.0"
 slowapi = "^0.1.9"
+pytest = "^8.4.2"
+pytest-asyncio = "^1.1.0"
+httpx = "^0.28.1"
+faker = "^37.6.0"
+jwt = "^1.4.0"
 
 
 [build-system]

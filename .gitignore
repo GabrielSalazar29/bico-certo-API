@@ -4,3 +4,5 @@ build
 .idea
 deployed_contracts.json
 test.db
+*.db
+*.log
