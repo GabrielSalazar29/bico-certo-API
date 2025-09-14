@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Table, ForeignKey, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from ..config.database import Base
@@ -20,6 +20,20 @@ class User(Base):
     # Security
     failed_login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime(timezone=True), nullable=True)
+
+    two_factor_enabled = Column(Boolean, default=False)
+    preferred_2fa_method = Column(String)  # 'email'
+    require_2fa_setup = Column(Boolean, default=False)  # Forçar setup no próximo login
+
+    # Security
+    last_password_change = Column(DateTime(timezone=True))
+    password_expires_at = Column(DateTime(timezone=True))
+
+    # Relationships
+    two_factor_settings = relationship("TwoFactorSettings", back_populates="user", uselist=False,
+                                       cascade="all, delete-orphan")
+    otp_codes = relationship("OTPCode", back_populates="user", cascade="all, delete-orphan")
+    login_attempts = relationship("LoginAttempt", back_populates="user", cascade="all, delete-orphan")
 
 
 class RefreshToken(Base):

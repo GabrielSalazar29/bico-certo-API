@@ -29,6 +29,15 @@ pytest-asyncio = "^1.1.0"
 httpx = "^0.28.1"
 faker = "^37.6.0"
 jwt = "^1.4.0"
+pyotp = "^2.9.0"
+qrcode = "^8.2"
+pillow = "^11.3.0"
+aiosmtplib = "^4.0.2"
+python-magic = "^0.4.27"
+cryptography = "^45.0.7"
+twilio = "^9.8.0"
+pylint = "^3.3.8"
+black = "^25.1.0"
 
 
 [build-system]

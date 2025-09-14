@@ -6,3 +6,4 @@ deployed_contracts.json
 test.db
 *.db
 *.log
+.env

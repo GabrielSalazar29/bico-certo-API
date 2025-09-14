@@ -6,7 +6,7 @@ from .config.settings import settings
 from .model import user, device, session
 from .util.logger import logger
 from .config.database import engine
-from .api import auth, job_manager
+from .api import auth, job_manager, two_factor
 from datetime import datetime, UTC
 
 
@@ -119,7 +119,9 @@ async def log_requests(request: Request, call_next):
 
 # Incluir rotas
 app.include_router(auth.router)
+app.include_router(two_factor.router)
 app.include_router(job_manager.router)
+
 
 
 # Root endpoint

@@ -7,7 +7,7 @@ from ..util.responses import APIResponse
 from ..util.validators import PasswordValidator, EmailValidator
 from ..util.exceptions import ValidationException
 from ..util.logger import AuditLogger
-from ..schema.user import UserCreate, UserResponse
+from ..schema.user import UserCreate
 from ..schema.auth import LoginRequest, RefreshRequest, TokenResponse
 from ..util.security import hash_password, verify_password
 from ..util.device import generate_fingerprint
@@ -20,6 +20,9 @@ from ..model.session import Session
 from ..util.exceptions import AuthException
 import uuid
 from ..config.settings import settings
+from ..model.two_factor import TwoFactorSettings, OTPCode, TwoFactorMethod
+from ..service.two_factor_service import TwoFactorService
+import secrets
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -107,7 +110,7 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
 
 
 @router.post("/login", response_model=APIResponse)
-def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db), _: bool = Depends(login_limiter)):
+async def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db), _: bool = Depends(login_limiter)):
     # Buscar usuário
     user = db.query(User).filter(User.email == credentials.email).first()
 
@@ -182,6 +185,80 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
         )
 
         raise AuthException(detail="Usuário inativo")
+
+    # Verifica se tem 2FA
+    if user.two_factor_enabled:
+        settings_2fa = db.query(TwoFactorSettings).filter(
+            TwoFactorSettings.user_id == user.id,
+            TwoFactorSettings.enabled == True
+        ).first()
+
+        if settings_2fa:
+            # Verificar se conta está bloqueada por muitas tentativas 2FA
+            if settings_2fa.locked_until and settings_2fa.locked_until.replace(tzinfo=UTC) > datetime.now(UTC):
+                time_remaining = (settings_2fa.locked_until.replace(tzinfo=UTC) - datetime.now(UTC)).seconds // 60
+
+                AuditLogger.log_auth_event(
+                    event_type="2fa_blocked_attempt",
+                    email=credentials.email,
+                    ip_address=request.client.host,
+                    success=False,
+                    details={"minutes_remaining": time_remaining}
+                )
+
+                raise AuthException(
+                    detail=f"2FA bloqueado. Tente em {time_remaining} minutos.",
+                    status_code=403
+                )
+
+            # Criar token temporário para verificação 2FA
+            temp_token = secrets.token_urlsafe(32)
+
+            # Salvar token temporário
+            temp_session = OTPCode(
+                user_id=user.id,
+                code=temp_token,  # Usamos o campo code para o token
+                method=settings_2fa.method,
+                purpose="2fa_verification",
+                expires_at=datetime.now(UTC) + timedelta(minutes=10),
+                ip_address=request.client.host,
+                user_agent=request.headers.get("user-agent", "unknown")
+            )
+            db.add(temp_session)
+            db.commit()
+
+            # Enviar código OTP
+            service = TwoFactorService(db)
+            await service.send_otp_code(
+                user_id=user.id,
+                method=settings_2fa.method,
+                purpose="login",
+                ip_address=request.client.host,
+                user_agent=request.headers.get("user-agent")
+            )
+
+            # Log
+            AuditLogger.log_auth_event(
+                event_type="2fa_required",
+                user_id=user.id,
+                email=user.email,
+                ip_address=request.client.host,
+                success=True,
+                details={
+                    "method": settings_2fa.method.value
+                }
+            )
+
+            return APIResponse.success_response(
+                data={
+                    "requires_2fa": True,
+                    "method": settings_2fa.method.value,
+                    "temp_token": temp_token,
+                    "user_id": user.id,
+                    "masked_contact": _mask_contact(user, settings_2fa)
+                },
+                message="Verificação de dois fatores necessária"
+            )
 
     device_dict = credentials.device_info.dict()
     fingerprint = generate_fingerprint(device_dict)
@@ -264,6 +341,20 @@ def login(credentials: LoginRequest, request: Request, db: Session = Depends(get
         },
         message="Login realizado com sucesso!"
     )
+
+
+def _mask_contact(user: User, settings_2fa: TwoFactorSettings) -> str:
+    """Mascara email ou telefone para exibição"""
+    if settings_2fa.method == TwoFactorMethod.EMAIL:
+        email = user.email
+        parts = email.split("@")
+        if len(parts[0]) > 3:
+            masked = parts[0][:2] + "*" * (len(parts[0]) - 3) + parts[0][-1]
+        else:
+            masked = parts[0][0] + "*" * (len(parts[0]) - 1)
+        return f"{masked}@{parts[1]}"
+
+    return ""
 
 
 @router.post("/refresh", response_model=TokenResponse)
