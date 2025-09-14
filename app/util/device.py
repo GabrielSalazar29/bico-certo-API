@@ -1,5 +1,5 @@
 import hashlib
-from typing import Dict, Optional
+from typing import Dict
 
 
 def generate_fingerprint(device_info: Dict) -> str:

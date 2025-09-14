@@ -2,7 +2,6 @@
 Testes automatizados para os endpoints de autenticação
 Arquivo: tests/test_auth.py
 """
-from typing import Dict
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timedelta
 import uuid
 import json
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 # Imports do projeto
 from app.main import app
@@ -821,7 +820,7 @@ class TestRateLimiting:
                 "password": "wrong",
                 "device_info": device_info
             })
-            teste = response.json()
+            response.json()
             if i < 5:
                 # Primeiras 5 tentativas devem passar (mesmo com erro de auth)
                 assert response.status_code in [401, 403]

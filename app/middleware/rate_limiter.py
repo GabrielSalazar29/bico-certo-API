@@ -1,4 +1,4 @@
-from fastapi import Request, HTTPException, status
+from fastapi import Request
 import redis
 from ..config.redis_config import get_redis
 from ..util.exceptions import RateLimitException

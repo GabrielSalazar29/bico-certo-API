@@ -213,7 +213,7 @@ async def regenerate_backup_codes(
         raise HTTPException(status_code=400, detail="2FA não está habilitado")
 
     # Gerar novos códigos
-    service = TwoFactorService(db)
+    TwoFactorService(db)
     new_codes = generate_backup_codes()
 
     # Salvar

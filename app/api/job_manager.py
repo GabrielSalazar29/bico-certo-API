@@ -1,7 +1,7 @@
 import datetime
 from app.model.bico_certo_main import BicoCerto
 from app.schema.job_manager import CreateJob, GetJob
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
 from app.config.database import get_db

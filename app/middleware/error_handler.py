@@ -1,4 +1,4 @@
-from fastapi import Request, Response
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from ..util.exceptions import AuthException, ValidationException, RateLimitException
 from ..util.responses import APIResponse
