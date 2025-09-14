@@ -35,8 +35,7 @@ async def setup_two_factor(
     # Setup
     success, message = service.setup_2fa(
         user_id=current_user.id,
-        method=method,
-        phone_number=request.phone_number if method == TwoFactorMethod.SMS else None
+        method=method
     )
 
     if not success:
@@ -266,7 +265,6 @@ async def two_factor_status(
         data={
             "enabled": settings_2fa.enabled,
             "method": settings_2fa.method.value if settings_2fa.method else None,
-            "phone_verified": settings_2fa.phone_verified,
             "email_verified": settings_2fa.email_verified,
             "backup_codes_count": backup_codes_count,
             "last_used": settings_2fa.last_used.isoformat() if settings_2fa.last_used else None
