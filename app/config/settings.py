@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     MAX_2FA_ATTEMPTS: int = 3
     ACCOUNT_LOCKOUT_MINUTES: int = 30
 
+    # Password Recovery
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+    PASSWORD_RESET_MAX_ATTEMPTS: int = 3
+
+    # Frontend URL (para links nos emails)
+    FRONTEND_URL: str = "http://localhost:3000"
+
     # Biometric Settings
     BIOMETRIC_API_KEY: str = ""
     BIOMETRIC_API_URL: str = ""

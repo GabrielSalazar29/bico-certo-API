@@ -50,5 +50,5 @@ class RefreshToken(Base):
     user = relationship("User", back_populates="refresh_tokens")
 
 
-# Adicionar no modelo User
 User.refresh_tokens = relationship("RefreshToken", back_populates="user")
+User.password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")

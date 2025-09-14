@@ -1,3 +1,5 @@
+import asyncio
+from ..service.auth_service import AuthService
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from ..config.database import get_db
@@ -28,7 +30,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=APIResponse)
-def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db), _: bool = Depends(register_limiter)):
+async def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db), _: bool = Depends(register_limiter)):
+
+    service = AuthService(db)
 
     if not EmailValidator.validate(user_data.email):
         raise ValidationException(
@@ -82,6 +86,8 @@ def register(user_data: UserCreate, request: Request, db: Session = Depends(get_
             ip_address=request.client.host,
             success=True
         )
+
+        asyncio.create_task(service.send_confirmation_email(user))
 
         return APIResponse.success_response(
             data={
