@@ -1,21 +1,21 @@
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import secrets
 from jose import JWTError, jwt
-from ..config.settings import settings
+from ..config.settings import settings, fuso_local
 
 
 def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
 
     if expires_delta:
-        expire = datetime.now(UTC) + expires_delta
+        expire = datetime.now(fuso_local) + expires_delta
     else:
-        expire = datetime.now(UTC) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(fuso_local) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({
         "exp": expire,
-        "iat": datetime.now(UTC),
+        "iat": datetime.now(fuso_local),
         "type": "access"
     })
 
@@ -34,7 +34,7 @@ def decode_token(token: str) -> Dict[str, Any]:
 def create_refresh_token() -> tuple[str, datetime]:
     """Cria refresh token e retorna (token, expiration)"""
     token = secrets.token_urlsafe(32)
-    expires_at = datetime.now(UTC) + timedelta(days=7)
+    expires_at = datetime.now(fuso_local) + timedelta(days=7)
     return token, expires_at
 
 

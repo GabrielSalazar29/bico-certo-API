@@ -13,6 +13,7 @@ from ..schema.two_factor import (
 from ..util.responses import APIResponse
 from ..auth.dependencies import get_current_user
 from ..model.user import User
+from ..config.settings import fuso_local
 
 router = APIRouter(prefix="/auth/2fa", tags=["Two Factor Authentication"])
 
@@ -106,14 +107,14 @@ async def verify_two_factor(
 ):
     """Verifica código 2FA durante login"""
     from ..model.two_factor import OTPCode
-    from datetime import datetime, UTC
+    from datetime import datetime
 
     # Verificar token temporário
     temp_session = db.query(OTPCode).filter(
         OTPCode.code == request.temp_token,
         OTPCode.purpose == "2fa_verification",
         OTPCode.used == False,
-        OTPCode.expires_at > datetime.now(UTC)
+        OTPCode.expires_at > datetime.now(fuso_local)
     ).first()
 
     if not temp_session:
@@ -133,7 +134,7 @@ async def verify_two_factor(
 
     # Marcar token temporário como usado
     temp_session.used = True
-    temp_session.used_at = datetime.now(UTC)
+    temp_session.used_at = datetime.now(fuso_local)
     db.commit()
 
     # Buscar usuário e criar tokens JWT

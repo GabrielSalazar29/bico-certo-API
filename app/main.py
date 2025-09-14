@@ -6,9 +6,9 @@ from .config.settings import settings
 from .model import user, device, session
 from .util.logger import logger
 from .config.database import engine
+from .config.settings import fuso_local
 from .api import auth, job_manager, two_factor, password_recovery
-from datetime import datetime, UTC
-
+from datetime import datetime
 
 # Criar tabelas
 user.Base.metadata.create_all(bind=engine)
@@ -144,7 +144,7 @@ async def health_check():
     return APIResponse.success_response(
         data={
             "status": "healthy",
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now(fuso_local).isoformat()
         },
         message="Sistema operacional"
     )

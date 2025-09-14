@@ -2,11 +2,11 @@ import secrets
 import json
 from typing import Optional, List, Tuple
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from ..model.user import User
 from ..model.two_factor import TwoFactorSettings, OTPCode, TwoFactorMethod
 from ..service.email_service import EmailService, generate_otp_email_template
-from ..config.settings import settings
+from ..config.settings import settings, fuso_local
 from ..config.redis_config import get_redis
 from ..util.logger import AuditLogger
 
@@ -62,7 +62,7 @@ class TwoFactorService:
             OTPCode.user_id == user_id,
             OTPCode.purpose == purpose,
             OTPCode.used == False
-        ).update({"used": True, "used_at": datetime.now(UTC)})
+        ).update({"used": True, "used_at": datetime.now(fuso_local)})
 
         # Gerar novo código
         code = generate_otp_code()
@@ -73,7 +73,7 @@ class TwoFactorService:
             code=code,
             method=method,
             purpose=purpose,
-            expires_at=datetime.now(UTC) + timedelta(minutes=settings.OTP_EXPIRY_MINUTES),
+            expires_at=datetime.now(fuso_local) + timedelta(minutes=settings.OTP_EXPIRY_MINUTES),
             ip_address=ip_address,
             user_agent=user_agent
         )
@@ -128,7 +128,7 @@ class TwoFactorService:
             OTPCode.code == code,
             OTPCode.purpose == purpose,
             OTPCode.used == False,
-            OTPCode.expires_at > datetime.now(UTC)
+            OTPCode.expires_at > datetime.now(fuso_local)
         ).first()
 
         if not otp_code:
@@ -147,7 +147,7 @@ class TwoFactorService:
 
         # Marcar como usado
         otp_code.used = True
-        otp_code.used_at = datetime.now(UTC)
+        otp_code.used_at = datetime.now(fuso_local)
 
         # Reset tentativas falhas
         self._reset_failed_attempts(user_id)
@@ -190,7 +190,7 @@ class TwoFactorService:
                 # Remover código usado
                 backup_codes.pop(i)
                 settings_2fa.backup_codes = json.dumps(backup_codes)
-                settings_2fa.last_used = datetime.now(UTC)
+                settings_2fa.last_used = datetime.now(fuso_local)
                 self.db.commit()
 
                 # Log
@@ -230,7 +230,7 @@ class TwoFactorService:
             settings_2fa.failed_attempts += 1
 
             if settings_2fa.failed_attempts >= settings.MAX_2FA_ATTEMPTS:
-                settings_2fa.locked_until = datetime.now(UTC) + timedelta(
+                settings_2fa.locked_until = datetime.now(fuso_local) + timedelta(
                     minutes=settings.ACCOUNT_LOCKOUT_MINUTES
                 )
 

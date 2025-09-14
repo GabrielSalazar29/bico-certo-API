@@ -2,11 +2,11 @@ import asyncio
 import secrets
 from typing import Tuple, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 from ..model.user import User
 from ..model.password_reset import PasswordResetToken
 from ..service.email_service import EmailService
-from ..config.settings import settings
+from ..config.settings import settings, fuso_local
 from ..util.logger import AuditLogger
 from ..util.security import hash_password
 from ..util.validators import PasswordValidator
@@ -53,17 +53,17 @@ class PasswordRecoveryService:
         existing_token = self.db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == user.id,
             PasswordResetToken.used == False,
-            PasswordResetToken.expires_at > datetime.now(UTC)
+            PasswordResetToken.expires_at > datetime.now(fuso_local)
         ).first()
         if existing_token:
             # Rate limiting - não permite novo token se já existe um válido
-            time_remaining = (existing_token.expires_at.replace(tzinfo=UTC) - datetime.now(UTC)).seconds // 60
+            time_remaining = (existing_token.expires_at.replace(tzinfo=fuso_local) - datetime.now(fuso_local)).seconds // 60
             return False, f"Já existe uma solicitação ativa. Aguarde {time_remaining} minutos.", None
         # Invalidar tokens antigos
         self.db.query(PasswordResetToken).filter(
             PasswordResetToken.user_id == user.id,
             PasswordResetToken.used == False
-        ).update({"used": True, "used_at": datetime.now(UTC)})
+        ).update({"used": True, "used_at": datetime.now(fuso_local)})
 
         # Criar novo token
         reset_token = generate_reset_token()
@@ -76,7 +76,7 @@ class PasswordRecoveryService:
             user_id=user.id,
             token=reset_token,
             verification_code=verification_code,
-            expires_at=datetime.now(UTC) + timedelta(minutes=30),  # 30 minutos
+            expires_at=datetime.now(fuso_local) + timedelta(minutes=30),  # 30 minutos
             ip_address=ip_address,
             user_agent=user_agent,
             requires_2fa_verification=has_2fa
@@ -324,16 +324,16 @@ class PasswordRecoveryService:
             return False, "Token inválido ou expirado", None
 
         # Verificar expiração
-        if password_reset.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+        if password_reset.expires_at.replace(tzinfo=fuso_local) < datetime.now(fuso_local):
             password_reset.used = True
-            password_reset.used_at = datetime.now(UTC)
+            password_reset.used_at = datetime.now(fuso_local)
             self.db.commit()
             return False, "Token expirado. Solicite nova recuperação.", None
 
         # Verificar tentativas
         if password_reset.attempts >= 3:
             password_reset.used = True
-            password_reset.used_at = datetime.now(UTC)
+            password_reset.used_at = datetime.now(fuso_local)
             self.db.commit()
             return False, "Muitas tentativas falhas. Solicite nova recuperação.", None
 
@@ -387,11 +387,11 @@ class PasswordRecoveryService:
 
         # Atualizar senha
         user.password_hash = hash_password(new_password)
-        user.last_password_change = datetime.now(UTC)
+        user.last_password_change = datetime.now(fuso_local)
 
         # Marcar token como usado
         password_reset.used = True
-        password_reset.used_at = datetime.now(UTC)
+        password_reset.used_at = datetime.now(fuso_local)
 
         # Invalidar todas as sessões do usuário (forçar novo login)
         from ..model.session import Session
@@ -400,7 +400,7 @@ class PasswordRecoveryService:
             Session.is_active == True
         ).update({
             "is_active": False,
-            "revoked_at": datetime.now(UTC)
+            "revoked_at": datetime.now(fuso_local)
         })
 
         self.db.commit()
@@ -427,7 +427,7 @@ class PasswordRecoveryService:
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Senha Alterada com Sucesso</h2>
             <p>Olá {user.full_name},</p>
-            <p>Sua senha foi alterada com sucesso em {datetime.now(UTC).strftime('%d/%m/%Y às %H:%M')}.</p>
+            <p>Sua senha foi alterada com sucesso em {datetime.now(fuso_local).strftime('%d/%m/%Y às %H:%M')}.</p>
             <p>Se você não fez esta alteração, entre em contato imediatamente com nosso suporte.</p>
             <p>Por segurança, todas as suas sessões foram encerradas. Você precisará fazer login novamente.</p>
         </body>

@@ -1,7 +1,8 @@
 import logging
 import json
-from datetime import datetime, UTC
+from datetime import datetime
 from typing import Any, Dict
+from ..config.settings import fuso_local
 
 # Configurar logger
 logging.basicConfig(
@@ -29,7 +30,7 @@ class AuditLogger:
     ):
         """Log de eventos de autenticação para auditoria"""
         log_entry = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(fuso_local).isoformat(),
             "event_type": event_type,
             "user_id": user_id,
             "email": email,

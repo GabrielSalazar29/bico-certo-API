@@ -15,13 +15,13 @@ from ..util.security import hash_password, verify_password
 from ..util.device import generate_fingerprint
 from ..auth.dependencies import get_current_user
 from ..auth.jwt_handler import create_tokens
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, timedelta
 from typing import List
 from ..middleware.rate_limiter import login_limiter, register_limiter
 from ..model.session import Session
 from ..util.exceptions import AuthException
 import uuid
-from ..config.settings import settings
+from ..config.settings import settings, fuso_local
 from ..model.two_factor import TwoFactorSettings, OTPCode, TwoFactorMethod
 from ..service.two_factor_service import TwoFactorService
 import secrets
@@ -121,8 +121,8 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
     user = db.query(User).filter(User.email == credentials.email).first()
 
     # Verificar se conta está bloqueada
-    if user and user.locked_until and user.locked_until.replace(tzinfo=UTC) > datetime.now(UTC):
-        time_remaining = (user.locked_until.replace(tzinfo=UTC) - datetime.now(UTC)).seconds // 60
+    if user and user.locked_until and user.locked_until.replace(tzinfo=fuso_local) > datetime.now(fuso_local):
+        time_remaining = (user.locked_until.replace(tzinfo=fuso_local) - datetime.now(fuso_local)).seconds // 60
 
         # LOG DE TENTATIVA EM CONTA BLOQUEADA
         AuditLogger.log_auth_event(
@@ -145,7 +145,7 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
             user.failed_login_attempts += 1
 
             if user.failed_login_attempts >= 5:
-                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
+                user.locked_until = datetime.now(fuso_local) + timedelta(minutes=15)
                 db.commit()
 
                 # LOG DE BLOQUEIO
@@ -178,7 +178,7 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
     # Reset tentativas em login bem-sucedido
     user.failed_login_attempts = 0
     user.locked_until = None
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now(fuso_local)
     user.last_ip = request.client.host
 
     # Verificar se está ativo
@@ -201,8 +201,8 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
 
         if settings_2fa:
             # Verificar se conta está bloqueada por muitas tentativas 2FA
-            if settings_2fa.locked_until and settings_2fa.locked_until.replace(tzinfo=UTC) > datetime.now(UTC):
-                time_remaining = (settings_2fa.locked_until.replace(tzinfo=UTC) - datetime.now(UTC)).seconds // 60
+            if settings_2fa.locked_until and settings_2fa.locked_until.replace(tzinfo=fuso_local) > datetime.now(fuso_local):
+                time_remaining = (settings_2fa.locked_until.replace(tzinfo=fuso_local) - datetime.now(fuso_local)).seconds // 60
 
                 AuditLogger.log_auth_event(
                     event_type="2fa_blocked_attempt",
@@ -226,7 +226,7 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
                 code=temp_token,  # Usamos o campo code para o token
                 method=settings_2fa.method,
                 purpose="2fa_verification",
-                expires_at=datetime.now(UTC) + timedelta(minutes=10),
+                expires_at=datetime.now(fuso_local) + timedelta(minutes=10),
                 ip_address=request.client.host,
                 user_agent=request.headers.get("user-agent", "unknown")
             )
@@ -289,7 +289,7 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
         db.add(device)
     else:
         # Atualizar device existente
-        device.last_seen = datetime.now(UTC)
+        device.last_seen = datetime.now(fuso_local)
         device.last_ip = request.client.host
 
     # if is_new_device and user.two_factor_enabled:
@@ -378,7 +378,7 @@ def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
         )
 
     # Verificar se expirou
-    if stored_token.expires_at.replace(tzinfo=UTC) < datetime.now(UTC):
+    if stored_token.expires_at.replace(tzinfo=fuso_local) < datetime.now(fuso_local):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token expirado"
@@ -462,7 +462,7 @@ async def logout(
 
         for session in sessions:
             session.is_active = False
-            session.revoked_at = datetime.now(UTC)
+            session.revoked_at = datetime.now(fuso_local)
 
         # Revogar todos os refresh tokens
         refresh_tokens = db.query(RefreshToken).filter(
@@ -596,7 +596,7 @@ async def revoke_session(
         )
 
     session.is_active = False
-    session.revoked_at = datetime.now(UTC)
+    session.revoked_at = datetime.now(fuso_local)
 
     db.commit()
 

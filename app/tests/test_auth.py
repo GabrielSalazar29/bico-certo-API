@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 import uuid
 import json
 from unittest.mock import Mock, patch, MagicMock
@@ -21,7 +21,7 @@ from app.model.device import Device
 from app.model.session import Session
 from app.util.security import hash_password
 from app.auth.jwt_handler import create_tokens
-from app.config.settings import settings
+from app.config.settings import fuso_local
 
 # Configuração do banco de dados de teste
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_auth.db"
@@ -389,7 +389,7 @@ class TestRefreshToken:
         expired_token = RefreshToken(
             user_id=existing_user.id,
             token="expired_token",
-            expires_at=datetime.now(UTC) - timedelta(days=1),
+            expires_at=datetime.now(fuso_local) - timedelta(days=1),
             revoked=False
         )
         db_session.add(expired_token)
@@ -409,7 +409,7 @@ class TestRefreshToken:
         revoked_token = RefreshToken(
             user_id=existing_user.id,
             token="revoked_token",
-            expires_at=datetime.now(UTC) + timedelta(days=7),
+            expires_at=datetime.now(fuso_local) + timedelta(days=7),
             revoked=True
         )
         db_session.add(revoked_token)
@@ -453,7 +453,7 @@ class TestLogout:
                 refresh_token=f"token_{i}",
                 ip_address="127.0.0.1",
                 user_agent="test",
-                expires_at=datetime.now(UTC) + timedelta(days=1),
+                expires_at=datetime.now(fuso_local) + timedelta(days=1),
                 is_active=True
             )
             db_session.add(session)
@@ -495,7 +495,7 @@ class TestGetMe:
             refresh_token=tokens["refresh_token"],
             ip_address="127.0.0.1",
             user_agent="test",
-            expires_at=datetime.now(UTC) + timedelta(days=1),
+            expires_at=datetime.now(fuso_local) + timedelta(days=1),
             is_active=True
         )
         db_session.add(session)
@@ -617,7 +617,7 @@ class TestSessions:
                 refresh_token=f"token_{i}",
                 ip_address=f"192.168.1.{i}",
                 user_agent="Mozilla/5.0",
-                expires_at=datetime.now(UTC) + timedelta(days=1),
+                expires_at=datetime.now(fuso_local) + timedelta(days=1),
                 is_active=True
             )
             db_session.add(session)
@@ -646,7 +646,7 @@ class TestSessions:
             refresh_token="session_to_revoke",
             ip_address="127.0.0.1",
             user_agent="test",
-            expires_at=datetime.now(UTC) + timedelta(days=1),
+            expires_at=datetime.now(fuso_local) + timedelta(days=1),
             is_active=True
         )
         db_session.add(session)

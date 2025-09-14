@@ -1,4 +1,7 @@
 from pydantic_settings import BaseSettings
+from zoneinfo import ZoneInfo
+
+fuso_local = ZoneInfo("America/Sao_Paulo")
 
 
 class Settings(BaseSettings):

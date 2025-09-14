@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from datetime import datetime, UTC
+from datetime import datetime
 from ..model.user import User
 from ..service.email_service import EmailService
+from ..config.settings import fuso_local
 
 
 class AuthService:
@@ -19,7 +20,7 @@ class AuthService:
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Conta criada com Sucesso</h2>
             <p>Olá {user.full_name},</p>
-            <p>Sua conta criada com sucesso em {datetime.now(UTC).strftime('%d/%m/%Y às %H:%M')}.</p>
+            <p>Sua conta criada com sucesso em {datetime.now(fuso_local).strftime('%d/%m/%Y às %H:%M')}.</p>
         </body>
         </html>
         """

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
 from app.config.database import get_db
-from app.model.user import User, RefreshToken
+from app.model.user import User
 from app.auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/jobs", tags=["JobManager"])
