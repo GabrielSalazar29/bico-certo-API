@@ -63,3 +63,4 @@ def get_job(job: GetJob, db: Session = Depends(get_db), current_user: User = Dep
         },
         message="Dados do serviço recuperados com sucesso!"
     )
+
