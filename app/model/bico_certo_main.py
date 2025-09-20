@@ -5,7 +5,6 @@ from enum import Enum
 from typing import Dict, Any
 from datetime import datetime
 
-
 # Enums
 class JobStatus(Enum):
     NONE = 0
@@ -37,6 +36,7 @@ class Job:
     ipfs_hash: str
     client_rating: int
     provider_rating: int
+    reason: str = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte o Job para dicionário"""
@@ -154,6 +154,35 @@ class BicoCerto:
         tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
         return tx_hash.hex()
     
+    def initiate_dispute(self, job_id: str, reason: str, from_address: str):
+        # Instância do contrato JobManager via registry
+        bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
+
+        # Transação para abrir disputa
+        tx = bicoCertoJobManager.functions.disputeJobFor(
+            bytes.fromhex(job_id.replace("0x", "")),  # garante que está no formato certo
+            reason
+        ).transact({
+            'from': from_address
+        })
+
+        # Aguarda confirmação
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx)
+
+        try:
+            # Processa o evento disparado no JobManager
+            logs = bicoCertoJobManager.events.JobDisputed().process_receipt(receipt)
+
+            if logs:
+                job_id_bytes = logs[0]['args']['jobId']
+                return job_id_bytes
+
+        except Exception as e:
+            print(f"\n❌ Ocorreu um erro ao processar os eventos de disputa: {e}")
+
+        return None
+    
+    
     def complete_job(self, job_id: bytes, gas_limit: int = 150000) -> str:
         """Complete a job through the main contract"""
         if not self.account:
@@ -208,6 +237,18 @@ class BicoCerto:
     def get_job(self, job_id: str) -> Job:
         """Get job details through the main contract"""
         job_data = self.contract.functions.getJob(bytes.fromhex(job_id)).call()
+        status = JobStatus(job_data[9])
+        reason = None
+        if status == JobStatus.DISPUTED:
+            dispute_resolver_address = self.registry.get_dispute_resolver()
+            dispute_contract = self.w3.eth.contract(
+                address=dispute_resolver_address,
+            )
+            try:
+                reason = dispute_contract.functions.getDisputeReason(bytes.fromhex(job_id)).call()
+            except Exception as e:
+                print(f"Erro ao buscar motivo da disputa: {e}")
+                reason = None
         return Job(
             id=job_data[0],
             client=job_data[1],
@@ -222,7 +263,8 @@ class BicoCerto:
             service_type=job_data[10],
             ipfs_hash=job_data[11],
             client_rating=job_data[12],
-            provider_rating=job_data[13]
+            provider_rating=job_data[13],
+            reason=reason
         )
     
     def calculate_platform_fee(self, amount: int) -> int:

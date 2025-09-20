@@ -12,3 +12,7 @@ class CreateJob(BaseModel):
 
 class GetJob(BaseModel):
     job_id: str = "1e97c24742d3249620f7612bec38cee3da664e79e51fca5c16a21f18cae2b11b"
+
+class DisputeJob(BaseModel):
+    job_id: str = "1e97c24742d3249620f7612bec38cee3da664e79e51fca5c16a21f18cae2b11b"
+    reason: str = "Serviço não entregue conforme o combinado"

@@ -122,6 +122,15 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
         _cancelJob(_jobId, _client);
     }
 
+    function disputeJobFor(bytes32 _jobId, string memory _reason) 
+        external 
+        onlyMainContract 
+        notPaused 
+        jobExists(_jobId) 
+    {
+        _disputeJob(_jobId, _reason);
+    }
+
     // ========== LÓGICA INTERNA ==========
 
     function _createJob(
@@ -246,6 +255,28 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
         );
 
         emit JobCancelled(_jobId, _client);
+    }
+
+    function _disputeJob(bytes32 _JobId, string memory _reason) public {
+        Job storage job = jobs[_JobId];
+        require(
+            msg.sender == job.client || msg.sender == job.provider,
+            "Apenas cliente ou prestador"
+        );
+        require(
+            job.status == JobStatus.Accepted || 
+            job.status == JobStatus.InProgress || 
+            job.status == JobStatus.Completed,
+            "Trabalho nao pode ser disputado"
+        );
+    
+        // Chama a função de disputa no contrato de resolução de disputas
+        IBicoCertoDisputeResolver(registry.getDisputeResolver()).openDispute(_JobId, _reason);
+        
+        // Atualiza o status do trabalho para Disputed
+        jobs[_JobId].status = JobStatus.Disputed;
+
+        emit JobDisputed(_JobId, msg.sender);
     }
 
     // ========== AUTO-APPROVE (não precisa de delegação) ==========

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from ..config.database import Base
 import uuid
 
@@ -12,6 +12,8 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
+   
+    address: Mapped[str] = mapped_column(String, unique=True, nullable=True)
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -1,6 +1,6 @@
 import datetime
 from app.model.bico_certo_main import BicoCerto
-from app.schema.job_manager import CreateJob, GetJob
+from app.schema.job_manager import CreateJob, GetJob, DisputeJob
 from fastapi import APIRouter, Depends
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
@@ -35,6 +35,22 @@ def create_job(job_data: CreateJob, db: Session = Depends(get_db), current_user:
         message="Serviço criado com sucesso!"
     )
 
+@router.post("/disputeJob", response_model=APIResponse)
+def dispute_job(
+    job: DisputeJob, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)  
+):
+    bico_certo.initiate_dispute(
+        job.job_id,
+        job.reason,
+        current_user.address
+    )
+
+    return APIResponse.success_response(
+        data={},
+        message="Disputa do serviço iniciada com sucesso!"
+    )
 
 @router.post("/", response_model=APIResponse)
 def get_job(job: GetJob, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

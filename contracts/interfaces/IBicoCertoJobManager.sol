@@ -73,6 +73,7 @@ interface IBicoCertoJobManager {
     function completeJobFor(bytes32 _jobId, address _provider) external;
     function approveJobFor(bytes32 _jobId, address _client, uint8 _rating) external;
     function cancelJobFor(bytes32 _jobId, address _client) external;
+    function disputeJobFor(bytes32 _jobId, string memory _reason) external;
 
     // ========== FUNÇÕES DE ATUALIZAÇÃO (para contratos confiáveis) ==========
     function updateJobStatus(bytes32 _jobId, JobStatus _newStatus) external;
