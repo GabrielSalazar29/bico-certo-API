@@ -17,7 +17,7 @@
 4. **Iniciar Ganache:**
     Abra um novo terminal e execute:
     ```bash
-    ganache --server.port 8545
+    ganache --gasPrice=0 --gasLimit 999999999 --defaultBalanceEther 100000 --port 8545 --hardfork berlin
     ```
     Mantenha este terminal aberto enquanto executa a api.
 

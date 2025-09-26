@@ -8,7 +8,6 @@ from ..model.device import Device
 from ..util.responses import APIResponse
 from ..util.validators import PasswordValidator, EmailValidator
 from ..util.exceptions import ValidationException
-from ..util.logger import AuditLogger
 from ..schema.user import UserCreate
 from ..schema.auth import LoginRequest, RefreshRequest, TokenResponse
 from ..util.security import hash_password, verify_password
@@ -17,7 +16,6 @@ from ..auth.dependencies import get_current_user
 from ..auth.jwt_handler import create_tokens
 from datetime import datetime, timedelta
 from typing import List
-from ..middleware.rate_limiter import login_limiter, register_limiter
 from ..model.session import Session
 from ..util.exceptions import AuthException
 import uuid
@@ -30,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=APIResponse)
-async def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db), _: bool = Depends(register_limiter)):
+async def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
 
     service = AuthService(db)
 
@@ -55,13 +53,6 @@ async def register(user_data: UserCreate, request: Request, db: Session = Depend
 
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
-        AuditLogger.log_auth_event(
-            event_type="register_duplicate_attempt",
-            email=user_data.email,
-            ip_address=request.client.host,
-            success=False,
-            details={"reason": "email_already_exists"}
-        )
 
         raise ValidationException(
             detail="Este email já está cadastrado",
@@ -79,14 +70,6 @@ async def register(user_data: UserCreate, request: Request, db: Session = Depend
         db.commit()
         db.refresh(user)
 
-        AuditLogger.log_auth_event(
-            event_type="register",
-            user_id=user.id,
-            email=user.email,
-            ip_address=request.client.host,
-            success=True
-        )
-
         asyncio.create_task(service.send_confirmation_email(user))
 
         return APIResponse.success_response(
@@ -101,37 +84,19 @@ async def register(user_data: UserCreate, request: Request, db: Session = Depend
     except Exception as e:
         db.rollback()
 
-        # LOG DE ERRO
-        AuditLogger.log_auth_event(
-            event_type="register_error",
-            email=user_data.email,
-            ip_address=request.client.host,
-            success=False,
-            details={"error": str(e)}
-        )
-
         raise ValidationException(
             detail="Erro ao criar usuário. Tente novamente."
         )
 
 
 @router.post("/login", response_model=APIResponse)
-async def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db), _: bool = Depends(login_limiter)):
+async def login(credentials: LoginRequest, request: Request, db: Session = Depends(get_db)):
     # Buscar usuário
     user = db.query(User).filter(User.email == credentials.email).first()
 
     # Verificar se conta está bloqueada
     if user and user.locked_until and user.locked_until.replace(tzinfo=fuso_local) > datetime.now(fuso_local):
         time_remaining = (user.locked_until.replace(tzinfo=fuso_local) - datetime.now(fuso_local)).seconds // 60
-
-        # LOG DE TENTATIVA EM CONTA BLOQUEADA
-        AuditLogger.log_auth_event(
-            event_type="login_blocked_attempt",
-            email=credentials.email,
-            ip_address=request.client.host,
-            success=False,
-            details={"minutes_remaining": time_remaining}
-        )
 
         raise AuthException(
             detail=f"Conta bloqueada. Tente em {time_remaining} minutos.",
@@ -148,30 +113,12 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
                 user.locked_until = datetime.now(fuso_local) + timedelta(minutes=15)
                 db.commit()
 
-                # LOG DE BLOQUEIO
-                AuditLogger.log_auth_event(
-                    event_type="account_locked",
-                    user_id=user.id,
-                    email=user.email,
-                    ip_address=request.client.host,
-                    success=False,
-                    details={"attempts": user.failed_login_attempts}
-                )
-
                 raise AuthException(
                     detail="Conta bloqueada por 15 minutos após 5 tentativas falhas",
                     status_code=403
                 )
 
             db.commit()
-
-        # LOG DE FALHA
-        AuditLogger.log_auth_event(
-            event_type="login_failed",
-            email=credentials.email,
-            ip_address=request.client.host,
-            success=False
-        )
 
         raise AuthException(detail="Email ou senha incorretos")
 
@@ -183,13 +130,6 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
 
     # Verificar se está ativo
     if not user.is_active:
-        AuditLogger.log_auth_event(
-            event_type="Usuário inativo",
-            email=credentials.email,
-            ip_address=request.client.host,
-            success=False
-        )
-
         raise AuthException(detail="Usuário inativo")
 
     # Verifica se tem 2FA
@@ -203,14 +143,6 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
             # Verificar se conta está bloqueada por muitas tentativas 2FA
             if settings_2fa.locked_until and settings_2fa.locked_until.replace(tzinfo=fuso_local) > datetime.now(fuso_local):
                 time_remaining = (settings_2fa.locked_until.replace(tzinfo=fuso_local) - datetime.now(fuso_local)).seconds // 60
-
-                AuditLogger.log_auth_event(
-                    event_type="2fa_blocked_attempt",
-                    email=credentials.email,
-                    ip_address=request.client.host,
-                    success=False,
-                    details={"minutes_remaining": time_remaining}
-                )
 
                 raise AuthException(
                     detail=f"2FA bloqueado. Tente em {time_remaining} minutos.",
@@ -243,18 +175,6 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
                 user_agent=request.headers.get("user-agent")
             )
 
-            # Log
-            AuditLogger.log_auth_event(
-                event_type="2fa_required",
-                user_id=user.id,
-                email=user.email,
-                ip_address=request.client.host,
-                success=True,
-                details={
-                    "method": settings_2fa.method.value
-                }
-            )
-
             return APIResponse.success_response(
                 data={
                     "requires_2fa": True,
@@ -271,11 +191,9 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
 
     device = db.query(Device).filter(Device.fingerprint == fingerprint).first()
 
-    is_new_device = False
 
     if not device:
         # Novo dispositivo
-        is_new_device = True
         device = Device(
             user_id=user.id,
             device_id=credentials.device_info.device_id,
@@ -319,19 +237,6 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
     )
     db.add(refresh_token)
     db.commit()
-
-    AuditLogger.log_auth_event(
-        event_type="login",
-        user_id=user.id,
-        email=user.email,
-        ip_address=request.client.host,
-        device_id=device.id,
-        success=True,
-        details={
-            "device_platform": device.platform,
-            "session_id": session.id
-        }
-    )
 
     return APIResponse.success_response(
         data={
@@ -475,15 +380,6 @@ async def logout(
 
         db.commit()
 
-        # LOG
-        AuditLogger.log_auth_event(
-            event_type="logout_all",
-            user_id=current_user.id,
-            email=current_user.email,
-            success=True,
-            details={"sessions_revoked": len(sessions)}
-        )
-
         return APIResponse.success_response(
             message=f"Logout realizado em {len(sessions)} dispositivos"
         )
@@ -492,13 +388,6 @@ async def logout(
         # LOGOUT APENAS DA SESSÃO ATUAL
         # Por simplicidade, vamos invalidar o último refresh token
         # Em produção, rastrear qual token está sendo usado
-
-        AuditLogger.log_auth_event(
-            event_type="logout",
-            user_id=current_user.id,
-            email=current_user.email,
-            success=True
-        )
 
         return APIResponse.success_response(
             message="Logout realizado com sucesso"
@@ -599,14 +488,6 @@ async def revoke_session(
     session.revoked_at = datetime.now(fuso_local)
 
     db.commit()
-
-    AuditLogger.log_auth_event(
-        event_type="session_revoked",
-        user_id=current_user.id,
-        email=current_user.email,
-        success=True,
-        details={"session_id": session_id}
-    )
 
     return APIResponse.success_response(
         message="Sessão revogada com sucesso"

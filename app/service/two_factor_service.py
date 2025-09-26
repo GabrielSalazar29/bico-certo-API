@@ -7,8 +7,6 @@ from ..model.user import User
 from ..model.two_factor import TwoFactorSettings, OTPCode, TwoFactorMethod
 from ..service.email_service import EmailService, generate_otp_email_template
 from ..config.settings import settings, fuso_local
-from ..config.redis_config import get_redis
-from ..util.logger import AuditLogger
 
 
 def generate_otp_code() -> str:
@@ -37,7 +35,6 @@ class TwoFactorService:
     def __init__(self, db: Session):
         self.db = db
         self.email_service = EmailService()
-        self.redis = get_redis()
 
     async def send_otp_code(
             self,
@@ -48,10 +45,6 @@ class TwoFactorService:
             user_agent: Optional[str] = None
     ) -> Tuple[bool, str]:
         """Envia código OTP por email ou SMS"""
-
-        # Verificar rate limiting
-        if not self._check_rate_limit(user_id, method):
-            return False, "Muitas tentativas. Aguarde antes de solicitar novo código."
 
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user:
@@ -98,18 +91,6 @@ class TwoFactorService:
             )
 
         if success:
-            # Log de sucesso
-            AuditLogger.log_auth_event(
-                event_type="otp_sent",
-                user_id=user_id,
-                email=user.email,
-                ip_address=ip_address,
-                success=True,
-                details={
-                    "method": method.value,
-                    "purpose": purpose
-                }
-            )
             return True, "Código enviado com sucesso"
 
         return False, "Erro ao enviar código"
@@ -154,19 +135,6 @@ class TwoFactorService:
 
         self.db.commit()
 
-        # Log
-        user = self.db.query(User).filter(User.id == user_id).first()
-        AuditLogger.log_auth_event(
-            event_type="otp_verified",
-            user_id=user_id,
-            email=user.email,
-            success=True,
-            details={
-                "method": otp_code.method.value,
-                "purpose": purpose
-            }
-        )
-
         return True, "Código verificado com sucesso"
 
     def _verify_backup_code(self, user_id: str, code: str) -> bool:
@@ -193,32 +161,9 @@ class TwoFactorService:
                 settings_2fa.last_used = datetime.now(fuso_local)
                 self.db.commit()
 
-                # Log
-                user = self.db.query(User).filter(User.id == user_id).first()
-                AuditLogger.log_auth_event(
-                    event_type="backup_code_used",
-                    user_id=user_id,
-                    email=user.email,
-                    success=True,
-                    details={"remaining": len(backup_codes)}
-                )
-
                 return True
 
         return False
-
-    def _check_rate_limit(self, user_id: str, method: TwoFactorMethod) -> bool:
-        """Verifica rate limiting para envio de códigos"""
-        key = f"otp_rate:{user_id}:{method.value}"
-
-        # Verificar no Redis
-        last_sent = self.redis.get(key)
-        if last_sent:
-            return False
-
-        # Definir cooldown
-        self.redis.set(key, "1", ex=settings.OTP_RESEND_COOLDOWN)
-        return True
 
     def _increment_failed_attempts(self, user_id: str):
         """Incrementa tentativas falhas"""
@@ -299,15 +244,6 @@ class TwoFactorService:
 
         self.db.commit()
 
-        # Log
-        AuditLogger.log_auth_event(
-            event_type="2fa_enabled",
-            user_id=user_id,
-            email=user.email,
-            success=True,
-            details={"method": settings_2fa.method.value}
-        )
-
         return True
 
     def disable_2fa(self, user_id: str, password: str) -> Tuple[bool, str]:
@@ -334,13 +270,5 @@ class TwoFactorService:
         user.preferred_2fa_method = None
 
         self.db.commit()
-
-        # Log
-        AuditLogger.log_auth_event(
-            event_type="2fa_disabled",
-            user_id=user_id,
-            email=user.email,
-            success=True
-        )
 
         return True, "2FA desabilitado com sucesso"

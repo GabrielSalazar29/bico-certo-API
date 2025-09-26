@@ -34,7 +34,8 @@ class User(Base):
                                        cascade="all, delete-orphan")
     otp_codes = relationship("OTPCode", back_populates="user", cascade="all, delete-orphan")
     login_attempts = relationship("LoginAttempt", back_populates="user", cascade="all, delete-orphan")
-
+    wallet = relationship("Wallet", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    # Nota: uselist=False torna One-to-One
 
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"

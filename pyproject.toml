@@ -39,6 +39,13 @@ twilio = "^9.8.0"
 pylint = "^3.3.8"
 black = "^25.1.0"
 autoflake = "^2.3.1"
+py-ecc = "^8.0.0"
+eth-keys = "^0.7.0"
+hdwallet = "^3.6.1"
+pycryptodome = "^3.23.0"
+mnemonic = "^0.21"
+eth-account = "^0.13.7"
+ipfshttpclient = "^0.7.0"
 
 
 [build-system]

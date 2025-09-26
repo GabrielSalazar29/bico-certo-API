@@ -7,7 +7,6 @@ from ..model.user import User
 from ..model.password_reset import PasswordResetToken
 from ..service.email_service import EmailService
 from ..config.settings import settings, fuso_local
-from ..util.logger import AuditLogger
 from ..util.security import hash_password
 from ..util.validators import PasswordValidator
 from .two_factor_service import generate_otp_code
@@ -39,14 +38,6 @@ class PasswordRecoveryService:
         user = self.db.query(User).filter(User.email == email).first()
         # IMPORTANTE: Sempre retornar sucesso para não revelar se email existe
         if not user:
-            # Log para auditoria, mas não revela ao usuário
-            AuditLogger.log_auth_event(
-                event_type="password_reset_requested_invalid_email",
-                email=email,
-                ip_address=ip_address,
-                success=False,
-                details={"reason": "email_not_found"}
-            )
             # Retorna sucesso falso para segurança
             return True, "Se o email existir, você receberá instruções de recuperação.", None
         # Verificar se já existe token ativo
@@ -89,15 +80,6 @@ class PasswordRecoveryService:
         success = await self._send_reset_email(user, reset_token, verification_code)
 
         if success:
-            AuditLogger.log_auth_event(
-                event_type="password_reset_requested",
-                user_id=user.id,
-                email=user.email,
-                ip_address=ip_address,
-                success=True,
-                details={"has_2fa": has_2fa}
-            )
-
             return True, "Instruções de recuperação enviadas para seu email.", reset_token
 
         return False, "Erro ao enviar email. Tente novamente.", None
@@ -404,15 +386,6 @@ class PasswordRecoveryService:
         })
 
         self.db.commit()
-
-        # Log
-        AuditLogger.log_auth_event(
-            event_type="password_reset_completed",
-            user_id=user.id,
-            email=user.email,
-            ip_address=ip_address,
-            success=True
-        )
 
         # Enviar email de confirmação
         asyncio.create_task(self._send_confirmation_email(user))

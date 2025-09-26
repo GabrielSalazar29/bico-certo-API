@@ -1,13 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from .util.responses import APIResponse
 from .config.settings import settings
 from .model import user, device, session
 from .util.logger import logger
 from .config.database import engine
 from .config.settings import fuso_local
-from .api import auth, job_manager, two_factor, password_recovery
+from .api import auth, job_manager, two_factor, password_recovery, wallet
 from datetime import datetime
 
 # Criar tabelas
@@ -38,20 +37,20 @@ app.add_middleware(
 #     return await middleware(request, call_next)
 
 
-@app.middleware("http")
-async def error_handler(request: Request, call_next):
-    """Tratamento global de erros"""
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        logger.error(f"Unhandled error: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content=APIResponse.error_response(
-                message="Erro interno do servidor"
-            ).dict()
-        )
+# @app.middleware("http")
+# async def error_handler(request: Request, call_next):
+#     """Tratamento global de erros"""
+#     try:
+#         response = await call_next(request)
+#         return response
+#     except Exception as e:
+#         logger.error(f"Unhandled error: {str(e)}")
+#         return JSONResponse(
+#             status_code=500,
+#             content=APIResponse.error_response(
+#                 message="Erro interno do servidor"
+#             ).dict()
+#         )
 
 
 @app.middleware("http")
@@ -121,6 +120,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(auth.router)
 app.include_router(two_factor.router)
 app.include_router(password_recovery.router)
+app.include_router(wallet.router)
 app.include_router(job_manager.router)
 
 

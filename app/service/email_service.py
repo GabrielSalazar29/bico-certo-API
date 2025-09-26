@@ -5,7 +5,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict
 from ..config.settings import settings
-from ..util.logger import logger
 
 
 def generate_otp_email_template(code: str, user_name: str, purpose: str = "login") -> Dict[str, str]:
@@ -196,9 +195,7 @@ class EmailService:
                 start_tls=self.use_tls
             )
 
-            logger.info(f"Email enviado para {to_email}")
             return True
 
         except Exception as e:
-            logger.error(f"Erro ao enviar email para {to_email}: {e}")
             return False

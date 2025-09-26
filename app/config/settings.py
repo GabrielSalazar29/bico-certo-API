@@ -11,16 +11,14 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # Database
-    DATABASE_URL: str = "sqlite:///./test.db"  # Começar com SQLite
+    DATABASE_URL: str = "sqlite:///./test.db"
 
     # JWT
     SECRET_KEY: str = "23ac218b5044ecd4dd69185b8f29395b99bb7040036fda69f526f21d0f08f14e"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     TWO_FACTOR_ENABLED: bool = True
-    TWO_FACTOR_ISSUER: str = "Bico Certo"
-    TWO_FACTOR_DEFAULT_METHOD: str = "email"
 
     # Email Settings (para 2FA por email)
     SMTP_HOST: str = "smtp.gmail.com"
@@ -34,7 +32,6 @@ class Settings(BaseSettings):
     OTP_LENGTH: int = 6
     OTP_EXPIRY_MINUTES: int = 5
     OTP_MAX_ATTEMPTS: int = 3
-    OTP_RESEND_COOLDOWN: int = 60
 
     BACKUP_CODES_COUNT: int = 8
     BACKUP_CODE_LENGTH: int = 8
@@ -50,9 +47,19 @@ class Settings(BaseSettings):
     # Frontend URL (para links nos emails)
     FRONTEND_URL: str = "http://localhost:3000"
 
-    # Biometric Settings
-    BIOMETRIC_API_KEY: str = ""
-    BIOMETRIC_API_URL: str = ""
+    # Blockchain Configuration
+    NETWORK_TYPE: str = "private"  # "private", "testnet", "mainnet"
+    WEB3_PROVIDER_URL: str = "http://127.0.0.1:8545"
+    ZERO_GAS_COST: bool = True  # Gas gratuito para rede privada
+    NETWORK_CHAIN_ID: int = 1337  # Chain ID do Ganache/Hardhat
+
+    # Wallet Configuration
+    WALLET_ENCRYPTION_KEY: str
+    MNEMONIC_LANGUAGE: str = "english"
+    MNEMONIC_STRENGTH: int = 128
+
+    IPFS_API_URL: str = "/ip4/127.0.0.1/tcp/5001"  # API do IPFS
+    IPFS_GATEWAY_URL: str = "http://localhost:8080"  # Gateway para acessar arquivos
 
     class Config:
         env_file = ".env"
