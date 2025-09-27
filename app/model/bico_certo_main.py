@@ -1,8 +1,9 @@
+from app.config.settings import settings
 from app.util.w3_util import *
 from app.model.bico_certo_registry import BicoCertoRegistry
 from dataclasses import dataclass, asdict
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 
 
@@ -100,43 +101,75 @@ class BicoCerto:
         self.contract = get_instance("BicoCerto", contract_addresses["BicoCerto"])
         self.registry = self.registry = BicoCertoRegistry(contract_address=contract_addresses["BicoCertoRegistry"])
 
-    def create_job(
-        self,
-        provider: str,
-        deadline: int,
-        service_type: str,
-        ipfs_hash: str,
-        value: int,
-        from_address: str
-    ) -> bytes:
-        """Create a new job through the main contract"""
-        
-        tx = self.contract.functions.createJob(
-            provider,
-            deadline,
-            service_type,
-            ipfs_hash
-        ).transact({
+    def prepare_create_job_transaction(
+            self,
+            from_address: str,
+            provider_address: str,
+            ipfs_cid: str,
+            category: str,
+            deadline: datetime,
+            payment_eth: float,
+            gas_limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para criar um job
+        """
+
+        deadline_timestamp = int(deadline.timestamp())
+
+        payment_wei = self.w3.to_wei(payment_eth, 'ether')
+
+        function = self.contract.functions.createJob(
+            provider_address,
+            deadline_timestamp,
+            category,
+            ipfs_cid
+        )
+
+        if gas_limit is None:
+            try:
+                gas_estimate = function.estimate_gas({
+                    'from': from_address,
+                    'value': payment_wei
+                })
+                gas_limit = int(gas_estimate * 1.2)  # 20% de margem
+            except Exception as e:
+                gas_limit = 300000  # Valor padrão alto para contratos
+
+        nonce = self.w3.eth.get_transaction_count(from_address)
+
+        transaction = function.build_transaction({
             'from': from_address,
-            'value': self.w3.to_wei(value, 'ether')
+            'value': payment_wei,
+            'gas': gas_limit,
+            'gasPrice': 0,
+            'nonce': nonce,
+            'chainId': self.w3.eth.chain_id
         })
 
-        receipt = w3.eth.wait_for_transaction_receipt(tx)
-        # signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        # tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
+        return transaction
+
+    def get_job_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
+        """
+        Extrai informações do job criado a partir do receipt
+        """
 
         bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
 
         try:
-            logs = bicoCertoJobManager.events.JobCreated().process_receipt(receipt)
+            # Processar logs do evento JobCreated
+            job_created_events = bicoCertoJobManager.events.JobCreated().process_receipt(tx_receipt)
 
-            if logs:
-                job_id_bytes = logs[0]['args']['jobId']
+            if job_created_events:
+                event = job_created_events[0]
+                return {
+                    'jobId': event['args']['jobId']
+                }
+
+            return None
 
         except Exception as e:
-            print(f"\n❌ Ocorreu um erro ao processar os eventos: {e}")
-
-        return job_id_bytes
+            return None
     
     def accept_job(self, job_id: bytes, gas_limit: int = 150000) -> str:
         """Accept a job through the main contract"""

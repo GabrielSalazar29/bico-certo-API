@@ -15,7 +15,7 @@ def compile_contracts():
     build_dir = os.path.join(project_root, 'build')
     
     # Define a versão do solc a ser utilizada, compatível com as declarações de pragma
-    solc_version = '0.8.20'
+    solc_version = '0.8.15'
     
     # Instala e configura a versão do solc
     print(f"Instalando e configurando a versão do solc para {solc_version}...")
@@ -59,7 +59,7 @@ def compile_contracts():
                 base_path=project_root,  # Define o caminho base para resolução de imports
                 allow_paths=[contracts_dir],  # Permite importações da pasta contracts
                 optimize=True,  # ≤- Parâmetro correto para ativar o otimizador
-                optimize_runs=200,  
+                optimize_runs=200,
                 via_ir=True
             )
             

@@ -28,8 +28,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/register", response_model=APIResponse)
-async def register(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
-
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     service = AuthService(db)
 
     if not EmailValidator.validate(user_data.email):

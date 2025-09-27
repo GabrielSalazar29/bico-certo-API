@@ -19,7 +19,6 @@ sqlalchemy = "^2.0.43"
 psycopg2-binary = "^2.9.10"
 pydantic = "^2.11.7"
 pydantic-settings = "^2.10.1"
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 python-multipart = "^0.0.20"
 redis = "^6.4.0"
@@ -46,6 +45,8 @@ pycryptodome = "^3.23.0"
 mnemonic = "^0.21"
 eth-account = "^0.13.7"
 ipfshttpclient = "^0.7.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+bcrypt = "3.2.2"
 
 
 [build-system]
