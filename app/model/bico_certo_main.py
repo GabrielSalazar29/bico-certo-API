@@ -109,15 +109,12 @@ class BicoCerto:
             category: str,
             deadline: datetime,
             payment_eth: float,
-            gas_limit: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Prepara transação para criar um job
         """
 
         deadline_timestamp = int(deadline.timestamp())
-
-        payment_wei = self.w3.to_wei(payment_eth, 'ether')
 
         function = self.contract.functions.createJob(
             provider_address,
@@ -126,15 +123,42 @@ class BicoCerto:
             ipfs_cid
         )
 
-        if gas_limit is None:
-            try:
-                gas_estimate = function.estimate_gas({
-                    'from': from_address,
-                    'value': payment_wei
-                })
-                gas_limit = int(gas_estimate * 1.2)  # 20% de margem
-            except Exception as e:
-                gas_limit = 300000  # Valor padrão alto para contratos
+        return self.payment_build_transaction(from_address, payment_eth, function)
+    
+    def prepare_create_open_job_transaction(
+            self,
+            from_address: str,
+            ipfs_cid: str,
+            category: str,
+            deadline: datetime,
+            max_budget_eth: int,
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para criar um job em aberto
+        """
+
+        deadline_timestamp = int(deadline.timestamp())
+
+        function = self.contract.functions.createOpenJob(
+            max_budget_eth,  # maxBudget
+            deadline_timestamp,  # deadline
+            category,  # serviceType
+            ipfs_cid  # ipfsHash
+        )
+
+        return self.payment_build_transaction(from_address, max_budget_eth, function)
+
+    def payment_build_transaction(self, from_address: str, payment_eth: float, function):
+        payment_wei = self.w3.to_wei(payment_eth, 'ether')
+
+        try:
+            gas_estimate = function.estimate_gas({
+                'from': from_address,
+                'value': payment_wei
+            })
+            gas_limit = int(gas_estimate * 1.2)  # 20% de margem
+        except Exception as e:
+            gas_limit = 300000  # Valor padrão alto para contratos
 
         nonce = self.w3.eth.get_transaction_count(from_address)
 
@@ -159,6 +183,28 @@ class BicoCerto:
         try:
             # Processar logs do evento JobCreated
             job_created_events = bicoCertoJobManager.events.JobCreated().process_receipt(tx_receipt)
+
+            if job_created_events:
+                event = job_created_events[0]
+                return {
+                    'jobId': event['args']['jobId']
+                }
+
+            return None
+
+        except Exception as e:
+            return None
+
+    def get_job_open_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
+        """
+        Extrai informações do job criado a partir do receipt
+        """
+
+        bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
+
+        try:
+            # Processar logs do evento JobCreated
+            job_created_events = bicoCertoJobManager.events.JobOpenForProposals().process_receipt(tx_receipt)
 
             if job_created_events:
                 event = job_created_events[0]

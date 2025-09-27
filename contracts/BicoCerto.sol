@@ -33,11 +33,66 @@ contract BicoCerto {
         return IBicoCertoJobManager(registry.getJobManager()).createJobFor{
             value: msg.value
         }(
-            msg.sender,  // Cliente real
+            msg.sender,
             _provider,
             _deadline,
             _serviceType,
             _ipfsHash
+        );
+    }
+
+    function createOpenJob(
+        uint256 _maxBudget,
+        uint256 _deadline,
+        string memory _serviceType,
+        string memory _ipfsHash
+    ) external payable returns (bytes32) {
+        return IBicoCertoJobManager(registry.getJobManager()).createOpenJob{
+            value: msg.value
+        }(
+            msg.sender,
+            _maxBudget,
+            _deadline,
+            _serviceType,
+            _ipfsHash
+        );
+    }
+
+    function submitProposal(
+        bytes32 _jobId,
+        uint256 _amount,
+        uint256 _estimatedTime,
+        string memory _ipfsHash
+    ) external returns (bytes32) {
+        return IBicoCertoJobManager(registry.getJobManager()).submitProposal(
+            msg.sender,
+            _jobId,
+            _amount,
+            _estimatedTime,
+            _ipfsHash
+        );
+    }
+
+    function acceptProposal(bytes32 _proposalId) external payable {
+        return IBicoCertoJobManager(registry.getJobManager()).acceptProposal{
+            value: msg.value
+        }(
+            _proposalId,
+            msg.sender
+        );
+    }
+
+    function rejectProposal(bytes32 _proposalId) external {
+        return IBicoCertoJobManager(registry.getJobManager()).rejectProposal(
+            _proposalId,
+            msg.sender
+        );
+    }
+
+    function withdrawProposal(bytes32 _proposalId) external {
+        return IBicoCertoJobManager(registry.getJobManager()).withdrawProposal(
+            _proposalId,
+            msg.sender
         );
     }
 
@@ -139,6 +194,26 @@ contract BicoCerto {
 
     function getJob(bytes32 _jobId) external view returns (IBicoCertoJobManager.Job memory) {
     return IBicoCertoJobManager(registry.getJobManager()).getJob(_jobId);
+    }
+
+    function getProposal(bytes32 _proposalId) external view returns (IBicoCertoJobManager.Proposal memory) {
+    return IBicoCertoJobManager(registry.getJobManager()).getProposal(_proposalId);
+    }
+
+    function getJobProposals(bytes32 _jobId) external view returns (bytes32[] memory) {
+    return IBicoCertoJobManager(registry.getJobManager()).getJobProposals(_jobId);
+    }
+
+    function getProviderProposals(address _provider) external view returns (bytes32[] memory) {
+    return IBicoCertoJobManager(registry.getJobManager()).getProviderProposals(_provider);
+    }
+
+    function getOpenJobs() external view returns (bytes32[] memory) {
+    return IBicoCertoJobManager(registry.getJobManager()).getOpenJobs();
+    }
+
+    function getActiveProposalsForJob(bytes32 _jobId) external view returns (IBicoCertoJobManager.Proposal[] memory) {
+    return IBicoCertoJobManager(registry.getJobManager()).getActiveProposalsForJob(_jobId);
     }
 
     function getUserProfile(address _user) external view returns (IBicoCertoReputation.User memory) {

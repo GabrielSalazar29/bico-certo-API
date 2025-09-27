@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional, List
 
 
 class CreateJobRequest(BaseModel):
@@ -17,14 +18,39 @@ class CreateJobRequest(BaseModel):
     password: str = Field(..., description="Senha do usuário para assinar transação")
 
 
-class CreateJob(BaseModel):
-    provider_address: str = "0x9Eededda12AB8124f349c58A4109F84D4B564788"
-    from_address: str = "0x2Aa6189c6375dB807Ea231CD50E20b804ac2A27B"
-    deadline: str = "10-10-2026"
-    service_type: str = "Pintura"
-    ipfs_hash: str = "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG"
-    value: int = 20
+class CreateOpenJobRequest(BaseModel):
+    """Request para criar job aberto para propostas"""
+    title: str = Field(..., min_length=3, max_length=100)
+    description: str = Field(..., min_length=10, max_length=2000)
+    category: str = Field(..., min_length=3, max_length=50)
+    location: str = Field(..., min_length=3, max_length=100)
+    max_budget_eth: int = Field(..., gt=0, description="Orçamento máximo em ETH")
+    deadline: str = Field(..., description="Formato DD-MM-YYYY")
+    password: str = Field(..., description="Senha do usuário")
 
+class SubmitProposalRequest(BaseModel):
+    """Request para submeter proposta"""
+    job_id: str = Field(..., description="ID do job (hex)")
+    amount_eth: float = Field(..., gt=0, description="Valor da proposta em ETH")
+    description: str = Field(..., min_length=10, max_length=1000)
+    estimated_time_days: int = Field(..., gt=0, description="Tempo estimado em dias")
+    portfolio_links: Optional[List[str]] = Field(default=[])
+    relevant_experience: Optional[str] = Field(default="")
+    password: str = Field(..., description="Senha do usuário")
 
-class GetJob(BaseModel):
-    job_id: str = "1e97c24742d3249620f7612bec38cee3da664e79e51fca5c16a21f18cae2b11b"
+class AcceptProposalRequest(BaseModel):
+    """Request para aceitar proposta"""
+    proposal_id: str = Field(..., description="ID da proposta (hex)")
+    password: str = Field(..., description="Senha do usuário")
+
+class ProposalResponse(BaseModel):
+    """Response com dados da proposta"""
+    proposal_id: str
+    job_id: str
+    provider: str
+    amount: float
+    description: str
+    estimated_time_days: int
+    status: str
+    created_at: str
+    ipfs_cid: Optional[str]
