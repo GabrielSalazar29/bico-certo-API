@@ -193,6 +193,36 @@ class BicoCerto:
 
         return self.build_transaction(from_address, function, amount_wei)
 
+    def prepare_reject_proposal_transaction(
+            self,
+            from_address: str,
+            proposal_id: bytes,
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para rejeitar uma proposta
+        """
+
+        function = self.contract.functions.rejectProposal(
+            proposal_id,
+        )
+
+        return self.build_transaction(from_address, function)
+
+    def prepare_cancel_proposal_transaction(
+            self,
+            from_address: str,
+            proposal_id: bytes,
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para rejeitar uma proposta
+        """
+
+        function = self.contract.functions.withdrawProposal(
+            proposal_id,
+        )
+
+        return self.build_transaction(from_address, function)
+
     def prepare_withdraw_transaction(
             self,
             from_address: str

@@ -38,7 +38,7 @@ class SubmitProposalRequest(BaseModel):
     password: str = Field(..., description="Senha do usuário")
 
 
-class AcceptProposalRequest(BaseModel):
+class AnswerProposalRequest(BaseModel):
     """Request para aceitar proposta"""
     proposal_id: str = Field(..., description="ID da proposta (hex)")
     password: str = Field(..., description="Senha do usuário")

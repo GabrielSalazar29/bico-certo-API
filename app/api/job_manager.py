@@ -5,7 +5,7 @@ from eth_account import Account
 from app.ipfs.ipfs_service import IPFSService
 from app.model.bico_certo_main import BicoCerto, ProposalStatus
 from app.model.wallet import Wallet
-from app.schema.job_manager import CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptProposalRequest
+from app.schema.job_manager import CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AnswerProposalRequest
 from fastapi import APIRouter, Depends, HTTPException
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
@@ -366,7 +366,7 @@ async def submit_proposal(
 
 @router.post("/accept-proposal", response_model=APIResponse)
 async def accept_proposal(
-        request: AcceptProposalRequest,
+        request: AnswerProposalRequest,
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
@@ -453,6 +453,147 @@ async def accept_proposal(
         raise HTTPException(
             status_code=400,
             detail=f"Erro ao aceitar proposta: {str(e.args[1]['reason'])}"
+        )
+
+
+@router.post("/reject-proposal", response_model=APIResponse)
+async def reject_proposal(
+        request: AnswerProposalRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Rejeita uma proposta
+    """
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == current_user.id
+    ).first()
+
+    if not wallet:
+        raise HTTPException(
+            status_code=400,
+            detail="Você precisa criar uma carteira primeiro"
+        )
+
+    # Obter chave privada
+    wallet_service = WalletService(db)
+    success, message, private_key = wallet_service.get_private_key(
+        user_id=current_user.id,
+        password=request.password
+    )
+
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+        # Chamar função do contrato
+        transaction = bico_certo.prepare_reject_proposal_transaction(
+            wallet.address,
+            bytes.fromhex(request.proposal_id)
+        )
+
+        # Preparar transação
+        signer = TransactionSigner()
+
+        # Assinar e enviar
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        tx_hash_hex = tx_hash.hex()
+
+        # Aguardar confirmação
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
+
+        if receipt['status'] != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Transação falhou na blockchain"
+            )
+
+        return APIResponse.success_response(
+            data={
+                "proposal_id": request.proposal_id,
+                "transaction_hash": tx_hash_hex,
+                "status": "rejected"
+            },
+            message="Proposta rejeitada"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao rejeitar proposta: {str(e.args[1]['reason'])}"
+        )
+
+
+@router.post("/cancel-proposal", response_model=APIResponse)
+async def cancel_proposal(
+        request: AnswerProposalRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Retira uma proposta enviada
+    """
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == current_user.id
+    ).first()
+
+    if not wallet:
+        raise HTTPException(
+            status_code=400,
+            detail="Você precisa criar uma carteira primeiro"
+        )
+
+    # Obter chave privada
+    wallet_service = WalletService(db)
+    success, message, private_key = wallet_service.get_private_key(
+        user_id=current_user.id,
+        password=request.password
+    )
+
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+
+        transaction = bico_certo.prepare_cancel_proposal_transaction(
+            wallet.address,
+            bytes.fromhex(request.proposal_id)
+        )
+
+        signer = TransactionSigner()
+
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        tx_hash_hex = tx_hash.hex()
+
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
+
+        if receipt['status'] != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Transação falhou na blockchain"
+            )
+
+        return APIResponse.success_response(
+            data={
+                "proposal_id": request.proposal_id,
+                "transaction_hash": tx_hash_hex,
+                "status": "canceled"
+            },
+            message="Proposta retirada com sucesso"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao retirar proposta: {str(e.args[1]['reason'])}"
         )
 
 
