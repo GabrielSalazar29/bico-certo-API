@@ -24,9 +24,10 @@ class CreateOpenJobRequest(BaseModel):
     description: str = Field(..., min_length=10, max_length=2000)
     category: str = Field(..., min_length=3, max_length=50)
     location: str = Field(..., min_length=3, max_length=100)
-    max_budget_eth: int = Field(..., gt=0, description="Orçamento máximo em ETH")
+    max_budget_eth: float = Field(..., gt=0, description="Orçamento máximo em ETH")
     deadline: str = Field(..., description="Formato DD-MM-YYYY")
     password: str = Field(..., description="Senha do usuário")
+
 
 class SubmitProposalRequest(BaseModel):
     """Request para submeter proposta"""
@@ -34,23 +35,10 @@ class SubmitProposalRequest(BaseModel):
     amount_eth: float = Field(..., gt=0, description="Valor da proposta em ETH")
     description: str = Field(..., min_length=10, max_length=1000)
     estimated_time_days: int = Field(..., gt=0, description="Tempo estimado em dias")
-    portfolio_links: Optional[List[str]] = Field(default=[])
-    relevant_experience: Optional[str] = Field(default="")
     password: str = Field(..., description="Senha do usuário")
+
 
 class AcceptProposalRequest(BaseModel):
     """Request para aceitar proposta"""
     proposal_id: str = Field(..., description="ID da proposta (hex)")
     password: str = Field(..., description="Senha do usuário")
-
-class ProposalResponse(BaseModel):
-    """Response com dados da proposta"""
-    proposal_id: str
-    job_id: str
-    provider: str
-    amount: float
-    description: str
-    estimated_time_days: int
-    status: str
-    created_at: str
-    ipfs_cid: Optional[str]

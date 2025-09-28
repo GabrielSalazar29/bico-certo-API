@@ -11,14 +11,22 @@ from datetime import datetime
 class JobStatus(Enum):
     NONE = 0
     CREATED = 1
-    ACCEPTED = 2
-    IN_PROGRESS = 3
-    COMPLETED = 4
-    APPROVED = 5
-    CANCELLED = 6
-    DISPUTED = 7
-    REFUNDED = 8
+    OPEN = 2
+    ACCEPTED = 3
+    IN_PROGRESS = 4
+    COMPLETED = 5
+    APPROVED = 6
+    CANCELLED = 7
+    DISPUTED = 8
+    REFUNDED = 9
 
+
+class ProposalStatus(Enum):
+    NONE = 0
+    PENDING = 1
+    ACCEPTED = 2
+    REJECTED = 3
+    CANCELED = 4
 
 # Data Classes
 @dataclass
@@ -42,23 +50,20 @@ class Job:
     def to_dict(self) -> Dict[str, Any]:
         """Converte o Job para dicionário"""
         data = asdict(self)
-        # Converte bytes para hex string
+
         data['id'] = data['id'].hex() if isinstance(data['id'], bytes) else data['id']
-        # Converte enum para valor
-        data['status'] = self.status.value if isinstance(self.status, JobStatus) else self.status
-        # Converte timestamps para formato legível (opcional)
-        data['created_at_formatted'] = datetime.fromtimestamp(
+
+        data['status'] = JobStatus(self.status).name
+
+        data['created_at'] = datetime.fromtimestamp(
             self.created_at).isoformat() if self.created_at > 0 else None
-        data['accepted_at_formatted'] = datetime.fromtimestamp(
+        data['accepted_at'] = datetime.fromtimestamp(
             self.accepted_at).isoformat() if self.accepted_at > 0 else None
-        data['completed_at_formatted'] = datetime.fromtimestamp(
+        data['completed_at'] = datetime.fromtimestamp(
             self.completed_at).isoformat() if self.completed_at > 0 else None
-        data['deadline_formatted'] = datetime.fromtimestamp(self.deadline).isoformat() if self.deadline > 0 else None
+        data['deadline'] = datetime.fromtimestamp(self.deadline).isoformat() if self.deadline > 0 else None
         return data
 
-    def to_json(self) -> str:
-        """Converte o Job para JSON string"""
-        return json.dumps(self.to_dict(), indent=2)
 
 
 @dataclass
@@ -114,6 +119,7 @@ class BicoCerto:
         Prepara transação para criar um job
         """
 
+        payment_wei = self.w3.to_wei(payment_eth, 'ether')
         deadline_timestamp = int(deadline.timestamp())
 
         function = self.contract.functions.createJob(
@@ -123,7 +129,7 @@ class BicoCerto:
             ipfs_cid
         )
 
-        return self.payment_build_transaction(from_address, payment_eth, function)
+        return self.build_transaction(from_address, function, payment_wei)
     
     def prepare_create_open_job_transaction(
             self,
@@ -131,162 +137,115 @@ class BicoCerto:
             ipfs_cid: str,
             category: str,
             deadline: datetime,
-            max_budget_eth: int,
+            max_budget_eth: float,
     ) -> Dict[str, Any]:
         """
         Prepara transação para criar um job em aberto
         """
-
+        max_budget_wei = self.w3.to_wei(max_budget_eth, 'ether')
         deadline_timestamp = int(deadline.timestamp())
 
         function = self.contract.functions.createOpenJob(
-            max_budget_eth,  # maxBudget
+            max_budget_wei,  # maxBudget
             deadline_timestamp,  # deadline
             category,  # serviceType
             ipfs_cid  # ipfsHash
         )
 
-        return self.payment_build_transaction(from_address, max_budget_eth, function)
+        return self.build_transaction(from_address, function, max_budget_wei)
+    
+    def prepare_submit_proposal_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+            amount_eth: float,
+            estimated_time: int,
+            ipfs_cid: str,
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para enviar uma proposta para um job especifico
+        """
+        amount_wei = self.w3.to_wei(amount_eth, 'ether')
 
-    def payment_build_transaction(self, from_address: str, payment_eth: float, function):
-        payment_wei = self.w3.to_wei(payment_eth, 'ether')
+        function = self.contract.functions.submitProposal(
+            job_id,
+            amount_wei,
+            estimated_time,
+            ipfs_cid
+        )
 
-        try:
-            gas_estimate = function.estimate_gas({
-                'from': from_address,
-                'value': payment_wei
-            })
-            gas_limit = int(gas_estimate * 1.2)  # 20% de margem
-        except Exception as e:
-            gas_limit = 300000  # Valor padrão alto para contratos
+        return self.build_transaction(from_address, function)
+
+    def build_transaction(self, from_address: str, function, payment_wei: Optional[float] = None):
 
         nonce = self.w3.eth.get_transaction_count(from_address)
 
-        transaction = function.build_transaction({
+        # Prepara os parâmetros base da transação
+        tx_params = {
             'from': from_address,
-            'value': payment_wei,
-            'gas': gas_limit,
-            'gasPrice': 0,
             'nonce': nonce,
+            'gasPrice': 0,
             'chainId': self.w3.eth.chain_id
-        })
+        }
+
+        if payment_wei is not None:
+            tx_params['value'] = payment_wei
+
+        transaction = function.build_transaction(tx_params)
 
         return transaction
 
     def get_job_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
-        """
-        Extrai informações do job criado a partir do receipt
-        """
-
-        bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
-
-        try:
-            # Processar logs do evento JobCreated
-            job_created_events = bicoCertoJobManager.events.JobCreated().process_receipt(tx_receipt)
-
-            if job_created_events:
-                event = job_created_events[0]
-                return {
-                    'jobId': event['args']['jobId']
-                }
-
-            return None
-
-        except Exception as e:
-            return None
+        """Extrai o 'jobId' do evento 'JobCreated'."""
+        return self._extract_event_data_from_receipt(
+            tx_receipt,
+            event_name="JobCreated",
+            arg_key="jobId",
+            return_key="jobId"
+        )
 
     def get_job_open_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
-        """
-        Extrai informações do job criado a partir do receipt
-        """
+        """Extrai o 'jobId' do evento 'JobOpenForProposals'."""
+        return self._extract_event_data_from_receipt(
+            tx_receipt,
+            event_name="JobOpenForProposals",
+            arg_key="jobId",
+            return_key="jobId"
+        )
+
+    def get_proposal_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
+        """Extrai o 'proposalId' do evento 'ProposalSubmitted'."""
+        return self._extract_event_data_from_receipt(
+            tx_receipt,
+            event_name="ProposalSubmitted",
+            arg_key="proposalId",
+            return_key="proposal_id"  # Note a diferença entre a chave do argumento e a de retorno
+        )
+
+    def _extract_event_data_from_receipt(self, tx_receipt, event_name: str, arg_key: str, return_key: str) -> Optional[
+        Dict[str, Any]]:
 
         bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
 
         try:
-            # Processar logs do evento JobCreated
-            job_created_events = bicoCertoJobManager.events.JobOpenForProposals().process_receipt(tx_receipt)
+            event_handler = getattr(bicoCertoJobManager.events, event_name)
 
-            if job_created_events:
-                event = job_created_events[0]
+            processed_events = event_handler().process_receipt(tx_receipt)
+
+            if processed_events:
+                event = processed_events[0]
                 return {
-                    'jobId': event['args']['jobId']
+                    return_key: event['args'][arg_key]
                 }
 
             return None
 
         except Exception as e:
             return None
-    
-    def accept_job(self, job_id: bytes, gas_limit: int = 150000) -> str:
-        """Accept a job through the main contract"""
-        if not self.account:
-            raise ValueError("Account required for transactions")
-        
-        tx = self.contract.functions.acceptJob(job_id).build_transaction({
-            'from': self.account.address,
-            'gas': gas_limit,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(self.account.address)
-        })
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        return tx_hash.hex()
-    
-    def complete_job(self, job_id: bytes, gas_limit: int = 150000) -> str:
-        """Complete a job through the main contract"""
-        if not self.account:
-            raise ValueError("Account required for transactions")
-        
-        tx = self.contract.functions.completeJob(job_id).build_transaction({
-            'from': self.account.address,
-            'gas': gas_limit,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(self.account.address)
-        })
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        return tx_hash.hex()
-    
-    def approve_job(self, job_id: bytes, rating: int, gas_limit: int = 200000) -> str:
-        """Approve a job and release payment through the main contract"""
-        if not self.account:
-            raise ValueError("Account required for transactions")
-        
-        if rating < 0 or rating > 5:
-            raise ValueError("Rating must be between 0 and 5")
-        
-        tx = self.contract.functions.approveJob(job_id, rating).build_transaction({
-            'from': self.account.address,
-            'gas': gas_limit,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(self.account.address)
-        })
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        return tx_hash.hex()
-    
-    def withdraw(self, gas_limit: int = 100000) -> str:
-        """Withdraw pending funds through the main contract"""
-        if not self.account:
-            raise ValueError("Account required for transactions")
-        
-        tx = self.contract.functions.withdraw().build_transaction({
-            'from': self.account.address,
-            'gas': gas_limit,
-            'gasPrice': self.w3.eth.gas_price,
-            'nonce': self.w3.eth.get_transaction_count(self.account.address)
-        })
-        
-        signed_tx = self.w3.eth.account.sign_transaction(tx, self.account.key)
-        tx_hash = self.w3.eth.send_raw_transaction(signed_tx.rawTransaction)
-        return tx_hash.hex()
-    
-    def get_job(self, job_id: str) -> Job:
+
+    def get_job(self, job_id: bytes) -> Job:
         """Get job details through the main contract"""
-        job_data = self.contract.functions.getJob(bytes.fromhex(job_id)).call()
+        job_data = self.contract.functions.getJob(job_id).call()
         return Job(
             id=job_data[0],
             client=job_data[1],

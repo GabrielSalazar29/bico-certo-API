@@ -25,7 +25,7 @@ class IPFSService:
         except Exception as e:
             raise Exception(f"IPFS não está disponível: {e}")
 
-    def add_job_data(self, job_data: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
+    def add_data_to_ipfs(self, data: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
         """
         Adiciona dados do job ao IPFS
         Retorna: (sucesso, mensagem, cid)
@@ -33,7 +33,7 @@ class IPFSService:
         try:
             # Adicionar timestamp e versão
             ipfs_data = {
-                "data": job_data
+                "data": data
             }
 
             # Adicionar ao IPFS
