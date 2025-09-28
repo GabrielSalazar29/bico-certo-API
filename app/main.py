@@ -5,7 +5,7 @@ from .config.settings import settings
 from .model import user, device, session
 from .config.database import engine
 from .config.settings import fuso_local
-from .api import auth, job_manager, two_factor, password_recovery, wallet
+from .api import auth, job_manager, two_factor, password_recovery, wallet, payment_gateway
 from datetime import datetime
 
 # Criar tabelas
@@ -72,6 +72,7 @@ app.include_router(two_factor.router)
 app.include_router(password_recovery.router)
 app.include_router(wallet.router)
 app.include_router(job_manager.router)
+app.include_router(payment_gateway.router)
 
 
 # Root endpoint

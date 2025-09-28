@@ -176,6 +176,34 @@ class BicoCerto:
 
         return self.build_transaction(from_address, function)
 
+    def prepare_accept_proposal_transaction(
+            self,
+            from_address: str,
+            proposal_id: bytes,
+            amount_eth: float,
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para aceitar uma proposta
+        """
+        amount_wei = self.w3.to_wei(amount_eth, 'ether')
+
+        function = self.contract.functions.acceptProposal(
+            proposal_id,
+        )
+
+        return self.build_transaction(from_address, function, amount_wei)
+
+    def prepare_withdraw_transaction(
+            self,
+            from_address: str
+    ) -> Dict[str, Any]:
+        """
+        Prepara transação para sacar o saldo para a carteira
+        """
+        function = self.contract.functions.withdraw()
+
+        return self.build_transaction(from_address, function)
+
     def build_transaction(self, from_address: str, function, payment_wei: Optional[float] = None):
 
         nonce = self.w3.eth.get_transaction_count(from_address)

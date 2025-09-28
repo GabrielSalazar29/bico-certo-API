@@ -3,9 +3,9 @@ from datetime import datetime
 from eth_account import Account
 
 from app.ipfs.ipfs_service import IPFSService
-from app.model.bico_certo_main import BicoCerto, ProposalStatus, JobStatus
+from app.model.bico_certo_main import BicoCerto, ProposalStatus
 from app.model.wallet import Wallet
-from app.schema.job_manager import CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest
+from app.schema.job_manager import CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptProposalRequest
 from fastapi import APIRouter, Depends, HTTPException
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
@@ -364,7 +364,99 @@ async def submit_proposal(
         )
 
 
-@router.get("/{job_id}/info", response_model=APIResponse)
+@router.post("/accept-proposal", response_model=APIResponse)
+async def accept_proposal(
+        request: AcceptProposalRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Aceita uma proposta para um job
+    """
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == current_user.id
+    ).first()
+
+    if not wallet:
+        raise HTTPException(
+            status_code=400,
+            detail="Você precisa criar uma carteira primeiro"
+        )
+
+    # Obter chave privada
+    wallet_service = WalletService(db)
+    success, message, private_key = wallet_service.get_private_key(
+        user_id=current_user.id,
+        password=request.password
+    )
+
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+        # Buscar detalhes da proposta
+        proposal = bico_certo.contract.functions.getProposal(
+            bytes.fromhex(request.proposal_id)
+        ).call()
+
+        job = bico_certo.contract.functions.getJob(proposal[1]).call()  # jobId
+
+        # Calcular se precisa de fundos adicionais
+        original_total = job[3] + job[4]  # amount + platformFee
+        proposal_total = proposal[3]  # proposal amount
+
+        additional_funds_needed = 0
+        if proposal_total > original_total:
+            additional_funds_needed = proposal_total - original_total
+
+            # Verificar saldo
+            signer = TransactionSigner()
+            balance = signer.get_balance(wallet.address)
+
+            if balance < bico_certo.w3.from_wei(additional_funds_needed, 'ether'):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Saldo insuficiente para fundos adicionais. Necessário: {bico_certo.w3.from_wei(additional_funds_needed, 'ether')} ETH"
+                )
+
+        # Preparar transação
+        transaction = bico_certo.prepare_accept_proposal_transaction(wallet.address, bytes.fromhex(request.proposal_id), additional_funds_needed)
+
+        # Assinar e enviar
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+
+        signer = TransactionSigner()
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        tx_hash_hex = tx_hash.hex()
+
+        # Aguardar confirmação
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=30)
+
+        if receipt['status'] != 1:
+            raise HTTPException(
+                status_code=400,
+                detail="Transação falhou na blockchain"
+            )
+
+        return APIResponse.success_response(
+            data={
+                "proposal_id": request.proposal_id,
+                "transaction_hash": tx_hash_hex,
+                "status": "accepted"
+            },
+            message="Proposta aceita com sucesso!"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao aceitar proposta: {str(e.args[1]['reason'])}"
+        )
+
+
+@router.get("/job/{job_id}/info", response_model=APIResponse)
 async def get_job(
         job_id: str
 ):
