@@ -178,17 +178,13 @@ class BicoCerto:
         Constrói uma transação genérica sem envio de valor (ETH).
         """
         try:
-            # Estima o gás necessário para a transação
             gas_estimate = function.estimate_gas({'from': from_address})
-            gas_limit = int(gas_estimate * 1.2)  # Adiciona uma margem de segurança de 20%
+            gas_limit = int(gas_estimate * 1.2)
         except Exception as e:
-            # Se a estimativa falhar, usa um valor de fallback
             gas_limit = 200000
 
-        # Pega o nonce da conta para a próxima transação
         nonce = self.w3.eth.get_transaction_count(from_address)
 
-        # Monta o dicionário da transação (sem o campo 'value')
         transaction = function.build_transaction({
             'from': from_address,
             'gas': gas_limit,
@@ -207,25 +203,22 @@ class BicoCerto:
             """
             Prepara a transação para aceitar um job (sem enviar ETH).
             """
-            # A função no contrato espera o job_id em bytes
             job_id_bytes = bytes.fromhex(job_id.replace("0x", ""))
 
             function = self.contract.functions.acceptJob(job_id_bytes)
 
-            # Estimar gás
             try:
                 gas_estimate = function.estimate_gas({'from': from_address})
-                gas_limit = int(gas_estimate * 1.2)  # Adiciona 20% de margem
+                gas_limit = int(gas_estimate * 1.2)
             except Exception:
-                gas_limit = 150000  # Fallback de gás
+                gas_limit = 150000  
 
             nonce = self.w3.eth.get_transaction_count(from_address)
 
-            # Constrói a transação (sem 'value' pois não envia fundos)
             transaction = function.build_transaction({
                 'from': from_address,
                 'gas': gas_limit,
-                'gasPrice': 0,  # Para rede local/privada
+                'gasPrice': 0,  
                 'nonce': nonce,
                 'chainId': self.w3.eth.chain_id
             })

@@ -297,15 +297,12 @@ async def accept_job(
     Aceita um job existente.
     Esta ação deve ser executada pelo prestador de serviço (provider).
     """
-    # 1. Verificar se o usuário (provider) tem uma carteira
     wallet = db.query(Wallet).filter(Wallet.user_id == current_user.id).first()
     if not wallet:
         raise HTTPException(
             status_code=400,
             detail="Você precisa de uma carteira para aceitar um trabalho."
         )
-
-    # 2. Obter a chave privada de forma segura
     wallet_service = WalletService(db)
     success, message, private_key = wallet_service.get_private_key(
         user_id=current_user.id,
@@ -313,36 +310,28 @@ async def accept_job(
     )
     if not success:
         raise HTTPException(status_code=401, detail=message)
-
-    # 3. Preparar, assinar e enviar a transação
     try:
         signer = TransactionSigner()
 
-        # Prepara a transação de aceite
         transaction = bico_certo.prepare_accept_job_transaction(
             from_address=wallet.address,
             job_id=request.job_id
         )
 
-        # Assina a transação com a chave privada
         account = Account.from_key(private_key)
         signed_tx = account.sign_transaction(transaction)
 
-        # Envia a transação para a blockchain
         tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
         tx_hash_hex = tx_hash.hex()
 
-        # Aguarda a confirmação (recibo)
         receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
 
-        # Verifica se a transação foi bem-sucedida
         if receipt['status'] != 1:
             raise HTTPException(
                 status_code=400,
                 detail="A transação falhou na blockchain. Verifique se você é o prestador correto e se o job está disponível."
             )
 
-        # Processa o evento para obter dados de confirmação
         job_info = bico_certo.get_job_accepted_from_receipt(receipt)
 
         return APIResponse.success_response(
@@ -356,7 +345,6 @@ async def accept_job(
         )
 
     except Exception as e:
-        # Erro genérico durante o processo
         raise HTTPException(
             status_code=400,
             detail=f"Erro ao aceitar o job: {str(e)}"

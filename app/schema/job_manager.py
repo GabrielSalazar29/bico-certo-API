@@ -53,6 +53,7 @@ class CompleteJobRequest(BaseModel):
     job_id: str = Field(..., description="O ID do job a ser concluído (hex)")
     password: str = Field(..., description="Senha do usuário para assinar a transação")
 
+
 class ApproveJobRequest(BaseModel):
     """Request para aprovar um job concluído e liberar o pagamento."""
     job_id: str = Field(..., description="O ID do job a ser aprovado (hex)")
