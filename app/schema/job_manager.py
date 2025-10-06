@@ -28,6 +28,11 @@ class CreateOpenJobRequest(BaseModel):
     deadline: str = Field(..., description="Formato DD-MM-YYYY")
     password: str = Field(..., description="Senha do usuário")
 
+class AcceptJobRequest(BaseModel):
+    """Request para aceitar um job."""
+    job_id: str = Field(..., description="O ID do job a ser aceito (formato hexadecimal)")
+    password: str = Field(..., description="Senha do usuário para assinar a transação")
+
 class SubmitProposalRequest(BaseModel):
     """Request para submeter proposta"""
     job_id: str = Field(..., description="ID do job (hex)")
@@ -43,6 +48,27 @@ class AcceptProposalRequest(BaseModel):
     proposal_id: str = Field(..., description="ID da proposta (hex)")
     password: str = Field(..., description="Senha do usuário")
 
+class CompleteJobRequest(BaseModel):
+    """Request para marcar um job como concluído."""
+    job_id: str = Field(..., description="O ID do job a ser concluído (hex)")
+    password: str = Field(..., description="Senha do usuário para assinar a transação")
+
+class ApproveJobRequest(BaseModel):
+    """Request para aprovar um job concluído e liberar o pagamento."""
+    job_id: str = Field(..., description="O ID do job a ser aprovado (hex)")
+    rating: int = Field(..., ge=1, le=5, description="Nota de avaliação para o prestador (1 a 5)")
+    password: str = Field(..., description="Senha do usuário para assinar a transação")
+
+class CancelJobRequest(BaseModel):
+    """Request para cancelar um job que ainda não foi aceito."""
+    job_id: str = Field(..., description="O ID do job a ser cancelado (hex)")
+    password: str = Field(..., description="Senha do usuário para assinar a transação")
+
+class AnswerProposalRequest(BaseModel):
+    """Request para aceitar proposta"""
+    proposal_id: str = Field(..., description="ID da proposta (hex)")
+    password: str = Field(..., description="Senha do usuário")
+    
 class ProposalResponse(BaseModel):
     """Response com dados da proposta"""
     proposal_id: str

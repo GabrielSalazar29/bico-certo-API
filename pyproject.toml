@@ -17,7 +17,7 @@ uvicorn = {extras = ["standard"], version = "^0.35.0"}
 python-dotenv = "^1.1.1"
 sqlalchemy = "^2.0.43"
 psycopg2-binary = "^2.9.10"
-pydantic = "^2.11.7"
+pydantic = {extras = ["email"], version = "^2.11.10"}
 pydantic-settings = "^2.10.1"
 python-jose = {extras = ["cryptography"], version = "^3.5.0"}
 python-multipart = "^0.0.20"
@@ -27,7 +27,6 @@ pytest = "^8.4.2"
 pytest-asyncio = "^1.1.0"
 httpx = "^0.28.1"
 faker = "^37.6.0"
-jwt = "^1.4.0"
 pyotp = "^2.9.0"
 qrcode = "^8.2"
 pillow = "^11.3.0"
@@ -47,6 +46,8 @@ eth-account = "^0.13.7"
 ipfshttpclient = "^0.7.0"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 bcrypt = "3.2.2"
+aiohappyeyeballs = "2.6.1"
+pep517 = "^0.13.1"
 
 
 [build-system]

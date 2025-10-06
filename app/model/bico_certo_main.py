@@ -172,7 +172,95 @@ class BicoCerto:
         })
 
         return transaction
+    
+    def build_transaction(self, from_address: str, function):
+        """
+        Constrói uma transação genérica sem envio de valor (ETH).
+        """
+        try:
+            # Estima o gás necessário para a transação
+            gas_estimate = function.estimate_gas({'from': from_address})
+            gas_limit = int(gas_estimate * 1.2)  # Adiciona uma margem de segurança de 20%
+        except Exception as e:
+            # Se a estimativa falhar, usa um valor de fallback
+            gas_limit = 200000
 
+        # Pega o nonce da conta para a próxima transação
+        nonce = self.w3.eth.get_transaction_count(from_address)
+
+        # Monta o dicionário da transação (sem o campo 'value')
+        transaction = function.build_transaction({
+            'from': from_address,
+            'gas': gas_limit,
+            'gasPrice': 0,
+            'nonce': nonce,
+            'chainId': self.w3.eth.chain_id
+        })
+
+        return transaction
+
+    def prepare_accept_job_transaction(
+                self,
+                from_address: str,
+                job_id: str,
+        ) -> Dict[str, Any]:
+            """
+            Prepara a transação para aceitar um job (sem enviar ETH).
+            """
+            # A função no contrato espera o job_id em bytes
+            job_id_bytes = bytes.fromhex(job_id.replace("0x", ""))
+
+            function = self.contract.functions.acceptJob(job_id_bytes)
+
+            # Estimar gás
+            try:
+                gas_estimate = function.estimate_gas({'from': from_address})
+                gas_limit = int(gas_estimate * 1.2)  # Adiciona 20% de margem
+            except Exception:
+                gas_limit = 150000  # Fallback de gás
+
+            nonce = self.w3.eth.get_transaction_count(from_address)
+
+            # Constrói a transação (sem 'value' pois não envia fundos)
+            transaction = function.build_transaction({
+                'from': from_address,
+                'gas': gas_limit,
+                'gasPrice': 0,  # Para rede local/privada
+                'nonce': nonce,
+                'chainId': self.w3.eth.chain_id
+            })
+
+            return transaction
+
+
+    def prepare_complete_job_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para marcar um job como concluído."""
+        function = self.contract.functions.completeJob(job_id)
+        return self.build_transaction(from_address, function)
+
+    def prepare_approve_job_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+            rating: int,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para aprovar um job e liberar o pagamento."""
+        function = self.contract.functions.approveJob(job_id, rating)
+        return self.build_transaction(from_address, function)
+
+    def prepare_cancel_job_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para cancelar um job."""
+        function = self.contract.functions.cancelJob(job_id)
+        return self.build_transaction(from_address, function)
+    
     def get_job_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
         """
         Extrai informações do job criado a partir do receipt
@@ -193,6 +281,27 @@ class BicoCerto:
             return None
 
         except Exception as e:
+            return None
+
+    def get_job_accepted_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
+        """
+        Extrai informações do evento JobAccepted a partir do recibo da transação.
+        """
+        # Instancia o contrato JobManager para acessar seus eventos
+        bicoCertoJobManager = get_instance("BicoCertoJobManager", self.registry.get_job_manager())
+
+        try:
+            # Processa os logs do evento JobAccepted
+            job_accepted_events = bicoCertoJobManager.events.JobAccepted().process_receipt(tx_receipt)
+            if job_accepted_events:
+                event = job_accepted_events[0]
+                return {
+                    'jobId': event['args']['jobId'].hex(),
+                    'provider': event['args']['provider'],
+                    'acceptedAt': datetime.fromtimestamp(event['args']['timestamp']).isoformat()
+                }
+            return None
+        except Exception:
             return None
 
     def get_job_open_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
