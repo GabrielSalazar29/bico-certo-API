@@ -13,24 +13,34 @@
     ```bash
     poetry run python script/compile_contracts.py
     ```
+<hr>
 
-4. **Iniciar Ganache:**
+### INICIANDO APP
+4. **Iniciar Ipfs:**
+    Abra o terminal Ubunto e execute:
+    ```bash
+    ipfs daemon
+    ```
+* Mantenha este terminal aberto enquanto executa a api.
+
+5. **Iniciar Ganache:**
     Abra um novo terminal e execute:
     ```bash
     ganache --gasPrice=0 --gasLimit 999999999 --defaultBalanceEther 100000 --port 8545 --hardfork berlin
     ```
-    Mantenha este terminal aberto enquanto executa a api.
+* Mantenha este terminal aberto enquanto executa a api.
 
-5. **Deploy dos contratos:**
+6. **Deploy dos contratos:**
 
     ```bash
     poetry run python script/deploy_contracts.py
     ```
-6. **Iniciar o uvicorn:**
+7. **Iniciar o uvicorn:**
 
     ```bash
     poetry run uvicorn app.main:app --reload
     ```
+* Mantenha este terminal aberto enquanto executa a api
 
 
 ### Base URL
