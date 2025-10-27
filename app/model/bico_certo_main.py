@@ -251,28 +251,6 @@ class BicoCerto:
         transaction = function.build_transaction(tx_params)
 
         return transaction
-    
-    def build_transaction(self, from_address: str, function):
-        """
-        Constrói uma transação genérica sem envio de valor (ETH).
-        """
-        try:
-            gas_estimate = function.estimate_gas({'from': from_address})
-            gas_limit = int(gas_estimate * 1.2)
-        except Exception as e:
-            gas_limit = 200000
-
-        nonce = self.w3.eth.get_transaction_count(from_address)
-
-        transaction = function.build_transaction({
-            'from': from_address,
-            'gas': gas_limit,
-            'gasPrice': 0,
-            'nonce': nonce,
-            'chainId': self.w3.eth.chain_id
-        })
-
-        return transaction
 
     def prepare_accept_job_transaction(
                 self,
