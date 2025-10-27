@@ -198,32 +198,14 @@ class BicoCerto:
     def prepare_accept_job_transaction(
                 self,
                 from_address: str,
-                job_id: str,
+                job_id: bytes,
         ) -> Dict[str, Any]:
             """
             Prepara a transação para aceitar um job (sem enviar ETH).
             """
-            job_id_bytes = bytes.fromhex(job_id.replace("0x", ""))
+            function = self.contract.functions.acceptJob(job_id)
+            return self.build_transaction(from_address, function)
 
-            function = self.contract.functions.acceptJob(job_id_bytes)
-
-            try:
-                gas_estimate = function.estimate_gas({'from': from_address})
-                gas_limit = int(gas_estimate * 1.2)
-            except Exception:
-                gas_limit = 150000  
-
-            nonce = self.w3.eth.get_transaction_count(from_address)
-
-            transaction = function.build_transaction({
-                'from': from_address,
-                'gas': gas_limit,
-                'gasPrice': 0,  
-                'nonce': nonce,
-                'chainId': self.w3.eth.chain_id
-            })
-
-            return transaction
 
 
     def prepare_complete_job_transaction(

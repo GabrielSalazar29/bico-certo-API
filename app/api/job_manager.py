@@ -313,9 +313,11 @@ async def accept_job(
     try:
         signer = TransactionSigner()
 
+        job_id_bytes = bytes.fromhex(request.job_id)
+
         transaction = bico_certo.prepare_accept_job_transaction(
             from_address=wallet.address,
-            job_id=request.job_id
+            job_id=job_id_bytes
         )
 
         account = Account.from_key(private_key)
