@@ -1,17 +1,17 @@
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from .util.responses import APIResponse
-from .config.settings import settings
-from .model import user, device, session
-from .config.database import engine
-from .config.settings import fuso_local
-from .api import auth, job_manager, two_factor, password_recovery, wallet
 from datetime import datetime
 
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+
+from .api import auth, job_manager, two_factor, password_recovery, wallet, payment_gateway, chat
+from .config.database import engine, Base
+from .config.settings import fuso_local
+from .config.settings import settings
+
+from .util.responses import APIResponse
+
 # Criar tabelas
-user.Base.metadata.create_all(bind=engine)
-device.Base.metadata.create_all(bind=engine)
-session.Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -72,6 +72,8 @@ app.include_router(two_factor.router)
 app.include_router(password_recovery.router)
 app.include_router(wallet.router)
 app.include_router(job_manager.router)
+app.include_router(payment_gateway.router)
+app.include_router(chat.router)
 
 
 # Root endpoint

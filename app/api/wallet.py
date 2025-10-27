@@ -236,8 +236,7 @@ async def transfer_eth(
                 "tx_hash": tx_hash,
                 "from": wallet.address,
                 "to": request.to_address,
-                "amount": request.amount_eth,
-                "gas_cost": 0,
+                "amount": request.amount_eth
             },
             message="Transferência enviada com sucesso"
         )
