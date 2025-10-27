@@ -1,4 +1,6 @@
 import asyncio
+
+from ..model.wallet import Wallet
 from ..service.auth_service import AuthService
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
@@ -185,6 +187,11 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
                 message="Verificação de dois fatores necessária"
             )
 
+    wallet = db.query(Wallet).filter(user.id == Wallet.user_id).first()
+    address = None
+    if wallet:
+        address = wallet.address
+
     device_dict = credentials.device_info.dict()
     fingerprint = generate_fingerprint(device_dict)
 
@@ -246,7 +253,8 @@ async def login(credentials: LoginRequest, request: Request, db: Session = Depen
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "full_name": user.full_name
+                "full_name": user.full_name,
+                "address": address
             }
         },
         message="Login realizado com sucesso!"

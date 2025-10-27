@@ -7,6 +7,7 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     user_id: str
     email: str
+    address: str
 
 
 class TokenResponse(BaseModel):

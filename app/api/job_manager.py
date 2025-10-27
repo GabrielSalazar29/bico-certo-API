@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from eth_account import Account
 
@@ -8,7 +9,7 @@ from app.model.wallet import Wallet
 from app.schema.job_manager import (
     CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptJobRequest, AnswerProposalRequest,
     CompleteJobRequest, ApproveJobRequest, CancelJobRequest)
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
 from app.config.database import get_db
@@ -274,7 +275,7 @@ async def create_open_job(
             ipfs_service.unpin_cid(ipfs_cid)
         raise HTTPException(
             status_code=400,
-            detail=f"Erro ao criar job: {str(e.args[1]['reason'])}"
+            detail=f"Erro ao criar job: {str(e)}"
         )
 
 
@@ -817,9 +818,13 @@ async def get_job(
 
 
 @router.get("/open-jobs", response_model=APIResponse)
-async def get_open_jobs():
+async def get_open_jobs(
+        category: Optional[str] = Query(None, description="Filtrar por categoria"),
+        search: Optional[str] = Query(None, description="Buscar por título ou descrição")
+):
     """
     Lista todos os jobs abertos para propostas
+    Opcionalmente filtra por categoria e/ou busca por texto
     """
     try:
         open_job_ids = bico_certo.contract.functions.getOpenJobs().call()
@@ -832,23 +837,47 @@ async def get_open_jobs():
             success, message, metadata = ipfs_service.get_job_data(ipfs_cid)
 
             if success:
+                job_category = job_data[10]
+
+                # Filtrar por categoria se fornecida
+                if category is not None and job_category.lower() != category.lower():
+                    continue
+
+                # Filtrar por busca de texto se fornecida
+                if search is not None:
+                    search_lower = search.lower()
+                    title = metadata.get("data", {}).get("title", "").lower()
+                    description = metadata.get("data", {}).get("description", "").lower()
+
+                    # Verifica se o termo de busca está no título ou descrição
+                    if search_lower not in title and search_lower not in description:
+                        continue
+
                 jobs.append({
                     "job_id": job_id.hex(),
                     "client": job_data[1],
                     "max_budget": bico_certo.w3.from_wei(job_data[3] + job_data[4], 'ether'),
                     "deadline": datetime.fromtimestamp(job_data[8]).isoformat(),
-                    "category": job_data[10],
+                    "category": job_category,
                     "proposal_count": job_data[15],
                     "metadata": metadata,
                     "ipfs_cid": ipfs_cid
                 })
 
+        message = f"Encontrados {len(jobs)} jobs abertos"
+        if category:
+            message += f" na categoria '{category}'"
+        if search:
+            message += f" com o termo '{search}'"
+
         return APIResponse.success_response(
             data={
                 "open_jobs": jobs,
-                "total": len(jobs)
+                "total": len(jobs),
+                "category_filter": category,
+                "search_term": search
             },
-            message=f"Encontrados {len(jobs)} jobs abertos para propostas"
+            message=message
         )
 
     except Exception as e:
@@ -856,7 +885,6 @@ async def get_open_jobs():
             status_code=400,
             detail=f"Erro ao buscar jobs abertos: {str(e)}"
         )
-
 
 @router.get("/job/{job_id}/proposals", response_model=APIResponse)
 async def get_job_proposals(job_id: str):
