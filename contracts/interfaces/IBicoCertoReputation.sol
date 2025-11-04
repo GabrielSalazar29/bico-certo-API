@@ -14,6 +14,7 @@ interface IBicoCertoReputation {
     event RatingGiven(bytes32 indexed jobId, address indexed rater, uint8 rating);
 
     function updateReputation(address _user, uint8 _rating, bool _positive) external;
+    function updateUserStats(address _user, uint256 _amount, bool _isProvider) external;
     function rateClient(bytes32 _jobId, uint8 _rating) external;
     function getUserProfile(address _user) external view returns (User memory);
 }

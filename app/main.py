@@ -72,7 +72,7 @@ app.include_router(two_factor.router)
 app.include_router(password_recovery.router)
 app.include_router(wallet.router)
 app.include_router(job_manager.router)
-app.include_router(payment_gateway.router)
+# app.include_router(payment_gateway.router)
 app.include_router(chat.router)
 
 

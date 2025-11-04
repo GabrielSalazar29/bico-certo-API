@@ -126,14 +126,6 @@ contract BicoCerto {
     }
 
     // ====
-    // FUNÇÕES DE PAGAMENTO
-    // ====
-
-    function withdraw() external {
-    IBicoCertoPaymentGateway(registry.getPaymentGateway()).withdraw(msg.sender);
-    }
-
-    // ====
     // SISTEMA DE DISPUTAS
     // ====
 
