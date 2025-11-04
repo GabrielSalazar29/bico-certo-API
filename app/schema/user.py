@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
-
+from typing import Optional
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -15,6 +15,31 @@ class UserResponse(UserBase):
     id: str
     is_active: bool
     created_at: datetime
-
+    # novos campos _______________
+    description: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    #____________________________________
     class Config:
         from_attributes = True
+
+#  NOVO SCHEMA UserUpdate
+class UserUpdate(BaseModel):
+    """
+    Schema para receber dados de atualização de perfil.
+    Todos os campos são opcionais.
+    """
+    full_name: Optional[str] = None
+    description: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = Field(
+        default=None, 
+        max_length=2, 
+        description="Sigla do estado (ex: SP)"
+    )
+    profile_image_url: Optional[str] = None # Para atualizar a URL da imagem de perfil
+    
+    class Config:
+        from_attributes = True
+
