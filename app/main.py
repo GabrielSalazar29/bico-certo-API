@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import auth, job_manager, two_factor, password_recovery, wallet, payment_gateway, chat
+from .api import auth, job_manager, two_factor, password_recovery, wallet, payment_gateway, chat,perfil
 from .config.database import engine, Base
 from .config.settings import fuso_local
 from .config.settings import settings
@@ -74,6 +74,7 @@ app.include_router(wallet.router)
 app.include_router(job_manager.router)
 app.include_router(payment_gateway.router)
 app.include_router(chat.router)
+app.include_router(perfil.router)
 
 
 # Root endpoint
