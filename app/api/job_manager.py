@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+import base64, binascii
 
 from eth_account import Account
 
@@ -43,6 +44,8 @@ async def create_job(
             status_code=400,
             detail="Você precisa criar uma carteira primeiro"
         )
+
+    
 
     job_metadata = {
         "title": request.title,
@@ -181,6 +184,29 @@ async def create_open_job(
             detail="Você precisa criar uma carteira primeiro"
         )
 
+    image_cids = []
+    print(F"Lista de Cid's: {image_cids}")
+    if request.images:
+            for base64_string in request.images:
+                print(f"{base64_string}")
+                try:
+                    # 💡 Decodifica Base64 de volta para bytes binários
+                    contents = base64.b64decode(base64_string)                 
+                except binascii.Error as b:
+                    raise HTTPException(status_code=400, detail=f"Uma das imagens Base64 é inválida: {str(b)}")
+                
+                except Exception as e:
+                    raise HTTPException(status_code=550, detail=f"Erro interno de decodificação: {str(e)}.")
+
+                # Você precisará do método que aceita bytes:
+                print("TENDANDO ENVIAR PARA O IPFS")
+                sucess_img, msg_img, cid = ipfs_service.add_bytes_to_ipfs(contents) 
+
+                if not sucess_img:
+                    raise HTTPException(status_code=500, detail=f"Erro ao salvar imagens no IPFS: {msg_img}")
+                image_cids.append(cid)
+                
+
     # Preparar metadata do job para IPFS
     job_metadata = {
         "title": request.title,
@@ -189,6 +215,7 @@ async def create_open_job(
         "location": request.location,
         "max_budget": request.max_budget_eth,
         "deadline": request.deadline,
+        "images": image_cids,
         "employer": {
             "address": wallet.address,
             "user_id": current_user.id,
@@ -197,6 +224,7 @@ async def create_open_job(
         "open_for_proposals": True,
         "created_at": datetime.now(fuso_local).isoformat()
     }
+
 
     success, message, ipfs_cid = ipfs_service.add_data_to_ipfs(job_metadata)
 
@@ -277,7 +305,6 @@ async def create_open_job(
             status_code=400,
             detail=f"Erro ao criar job: {str(e)}"
         )
-
 
 @router.post("/submit-proposal", response_model=APIResponse)
 async def submit_proposal(
