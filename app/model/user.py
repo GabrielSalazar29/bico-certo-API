@@ -13,12 +13,12 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
 
-    # --- NOVOS CAMPOS DE PERFIL ---
-    description = Column(String, nullable=True) # descrição
-    city = Column(String, nullable=True) # cidade
-    state = Column(String(2), nullable=True)  # estado
-    profile_image_url = Column(String, nullable=True)  # Para salvar a URL da imagem
-    # -----------------------------
+    # perfil
+    description = Column(String, nullable=True) 
+    city = Column(String, nullable=True) 
+    state = Column(String(2), nullable=True)  
+    profile_image_url = Column(String, nullable=True)  
+    
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

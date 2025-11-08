@@ -24,12 +24,10 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-#  NOVO SCHEMA UserUpdate
 class UserUpdate(BaseModel):
-    """
-    Schema para receber dados de atualização de perfil.
-    Todos os campos são opcionais.
-    """
+
+   #Schema para receber dados de atualização de perfil.
+
     full_name: Optional[str] = None
     description: Optional[str] = None
     city: Optional[str] = None
@@ -38,7 +36,7 @@ class UserUpdate(BaseModel):
         max_length=2, 
         description="Sigla do estado (ex: SP)"
     )
-    profile_image_url: Optional[str] = None # Para atualizar a URL da imagem de perfil
+    profile_image_url: Optional[str] = None 
     
     class Config:
         from_attributes = True
