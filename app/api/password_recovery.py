@@ -32,7 +32,7 @@ async def forgot_password(
     # IMPORTANTE: Sempre retornar sucesso para não revelar se email existe
     return APIResponse.success_response(
         message="Se o email estiver cadastrado, você receberá instruções de recuperação.",
-        data={"email": request.email}
+        data={"email": request.email,"reset_token": reset_token if success else None}
     )
 
 

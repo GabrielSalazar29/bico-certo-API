@@ -93,8 +93,9 @@ class PasswordRecoveryService:
         """Envia email com instruções de reset"""
 
         # URL do frontend para reset (ajustar conforme necessário)
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
-
+        # Trechos com reset_url, comentados.
+        reset_url = f"{settings.FRONTEND_URL}/reset-password"
+        
         html_template = f"""
         <!DOCTYPE html>
         <html>
@@ -219,7 +220,7 @@ class PasswordRecoveryService:
                 <p><strong>Seu código de verificação:</strong></p>
                 <div class="code-box">{verification_code}</div>
 
-                <div style="text-align: center;">
+                <!--<div style="text-align: center;">
                     <a href="{reset_url}" class="button">Redefinir Minha Senha</a>
                 </div>
 
@@ -228,7 +229,7 @@ class PasswordRecoveryService:
                     <code style="background: #f8f9fa; padding: 5px; border-radius: 3px; word-break: break-all;">
                         {reset_url}
                     </code>
-                </p>
+                </p>-->
 
                 <div class="warning">
                     <strong>⚠️ Importante:</strong>
@@ -266,8 +267,8 @@ class PasswordRecoveryService:
 
         Seu código de verificação é: {verification_code}
 
-        Para redefinir sua senha, acesse:
-        {reset_url}
+        <!--Para redefinir sua senha, acesse:
+        {reset_url}-->
 
         Este link expira em 30 minutos e só pode ser usado uma vez.
 
