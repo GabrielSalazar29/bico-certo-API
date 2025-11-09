@@ -27,9 +27,9 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
     uint256 public totalProposals;
 
     constructor(
-        address _registryAddress, 
+        address _registryAddress,
         address _bicoCertoAddress,
-        uint256 _minJobValue, 
+        uint256 _minJobValue,
         uint256 _autoApprovalTimeout
     ) {
         registry = IBicoCertoRegistry(_registryAddress);
@@ -66,37 +66,37 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
     }
 
     function acceptJobFor(bytes32 _jobId, address _sender)
-        external 
-        onlyMainContract 
-        notPaused 
-        jobExists(_jobId) 
+        external
+        onlyMainContract
+        notPaused
+        jobExists(_jobId)
     {
         _acceptJob(_jobId, _sender);
     }
 
     function completeJobFor(bytes32 _jobId, address _sender)
-        external 
-        onlyMainContract 
-        notPaused 
-        jobExists(_jobId) 
+        external
+        onlyMainContract
+        notPaused
+        jobExists(_jobId)
     {
         _completeJob(_jobId, _sender);
     }
 
     function approveJobFor(bytes32 _jobId, address _sender, uint8 _rating)
-        external 
-        onlyMainContract 
-        notPaused 
-        jobExists(_jobId) 
+        external
+        onlyMainContract
+        notPaused
+        jobExists(_jobId)
     {
         _approveJob(_jobId, _sender, _rating);
     }
 
     function cancelJobFor(bytes32 _jobId, address _sender)
-        external 
-        onlyMainContract 
-        notPaused 
-        jobExists(_jobId) 
+        external
+        onlyMainContract
+        notPaused
+        jobExists(_jobId)
     {
         _cancelJob(_jobId, _sender);
     }
@@ -371,7 +371,7 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
         IBicoCertoPaymentGateway paymentGateway = IBicoCertoPaymentGateway(
             registry.getPaymentGateway()
         );
-        
+
         // Enviar ETH para o PaymentGateway guardar
         (bool success, ) = address(paymentGateway).call{value: _value}("");
         require(success, "Falha ao transferir fundos para custodia");
@@ -396,7 +396,7 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
         Job storage job = jobs[_jobId];
         require(job.provider == _provider, "Apenas prestador");
         require(
-            job.status == JobStatus.Accepted || 
+            job.status == JobStatus.Accepted ||
             job.status == JobStatus.InProgress,
             "Trabalho nao pode ser completado"
         );
@@ -423,14 +423,14 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
             job.platformFee
         );
 
-        IBicoCertoReputation(registry.getReputation()).updateReputation(
-            job.provider, 
-            _rating, 
-            true
-        );
+        IBicoCertoReputation reputation = IBicoCertoReputation(registry.getReputation());
+        reputation.updateReputation(job.provider, _rating, true);
+
+        // Atualizar estatísticas de ganhos e gastos
+        reputation.updateUserStats(job.provider, job.amount, true);
+        reputation.updateUserStats(job.client, job.amount, false);
 
         emit JobApproved(_jobId, _client, job.amount, job.platformFee);
-        // emit IBicoCertoReputation.RatingGiven(_jobId, _client, _rating);
     }
 
     function _cancelJob(bytes32 _jobId, address _client) private {
@@ -448,8 +448,6 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
 
         emit JobCancelled(_jobId, _client);
     }
-
-    // ========== AUTO-APPROVE (não precisa de delegação) ==========
 
     function autoApprove(bytes32 _jobId) external notPaused jobExists(_jobId) {
         Job storage job = jobs[_jobId];
@@ -469,11 +467,12 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
             job.platformFee
         );
 
-        IBicoCertoReputation(registry.getReputation()).updateReputation(
-            job.provider, 
-            5, 
-            true
-        );
+        IBicoCertoReputation reputation = IBicoCertoReputation(registry.getReputation());
+        reputation.updateReputation(job.provider, 5, true);
+
+        // Atualizar estatísticas de ganhos e gastos
+        reputation.updateUserStats(job.provider, job.amount, true);
+        reputation.updateUserStats(job.client, job.amount, false);
 
         emit JobApproved(_jobId, job.client, job.amount, job.platformFee);
     }

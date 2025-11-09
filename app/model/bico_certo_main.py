@@ -45,6 +45,8 @@ class Job:
     ipfs_hash: str
     client_rating: int
     provider_rating: int
+    openForProposals: bool
+    total_proposals: int
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte o Job para dicionário"""
@@ -53,6 +55,8 @@ class Job:
         data['id'] = data['id'].hex() if isinstance(data['id'], bytes) else data['id']
 
         data['status'] = JobStatus(self.status).name
+
+        data['max_budget'] = data['amount'] + data['platform_fee']
 
         data['created_at'] = datetime.fromtimestamp(
             self.created_at).isoformat() if self.created_at > 0 else None
@@ -64,6 +68,28 @@ class Job:
         return data
 
 
+@dataclass
+class Reputation:
+    """Represents a job in the BicoCerto system"""
+    totalJobs: int
+    successfulJobs: int
+    totalEarned: int
+    totalSpent: int
+    reputationScore: int
+    joinedAt: int
+
+    def __init__(self, obj: tuple):
+        self.totalJobs = obj[0]
+        self.successfulJobs = obj[1]
+        self.totalEarned = obj[2]
+        self.totalSpent = obj[3]
+        self.reputationScore = obj[4]
+        self.joinedAt = obj[5]
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Converte o Job para dicionário"""
+        data = asdict(self)
+        return data
 
 @dataclass
 class User:
@@ -379,7 +405,9 @@ class BicoCerto:
             service_type=job_data[10],
             ipfs_hash=job_data[11],
             client_rating=job_data[12],
-            provider_rating=job_data[13]
+            provider_rating=job_data[13],
+            openForProposals=job_data[14],
+            total_proposals=job_data[15]
         )
     
     def calculate_platform_fee(self, amount: int) -> int:

@@ -17,7 +17,7 @@ contract BicoCerto {
     BicoCertoRegistry public registry;
 
     constructor(address _registryAddress) {
-    registry = BicoCertoRegistry(_registryAddress);
+        registry = BicoCertoRegistry(_registryAddress);
     }
 
     // ====
@@ -126,34 +126,26 @@ contract BicoCerto {
     }
 
     // ====
-    // FUNÇÕES DE PAGAMENTO
-    // ====
-
-    function withdraw() external {
-    IBicoCertoPaymentGateway(registry.getPaymentGateway()).withdraw(msg.sender);
-    }
-
-    // ====
     // SISTEMA DE DISPUTAS
     // ====
 
     function openDispute(bytes32 _jobId, string memory _reason) external {
-    IBicoCertoDisputeResolver(registry.getDisputeResolver()).openDispute(
-    _jobId,
-    _reason
-    );
+        IBicoCertoDisputeResolver(registry.getDisputeResolver()).openDispute(
+            _jobId,
+            _reason
+        );
     }
 
     function resolveDispute(
-    bytes32 _jobId,
-    bool _favorClient,
-    string memory _resolution
+        bytes32 _jobId,
+        bool _favorClient,
+        string memory _resolution
     ) external {
-    IBicoCertoDisputeResolver(registry.getDisputeResolver()).resolveDispute(
-    _jobId,
-    _favorClient,
-    _resolution
-    );
+        IBicoCertoDisputeResolver(registry.getDisputeResolver()).resolveDispute(
+            _jobId,
+            _favorClient,
+            _resolution
+        );
     }
 
     // ====
@@ -161,7 +153,7 @@ contract BicoCerto {
     // ====
 
     function rateClient(bytes32 _jobId, uint8 _rating) external {
-    IBicoCertoReputation(registry.getReputation()).rateClient(_jobId, _rating);
+        IBicoCertoReputation(registry.getReputation()).rateClient(_jobId, _rating);
     }
 
     // ====
@@ -169,19 +161,19 @@ contract BicoCerto {
     // ====
 
     function addArbitrator(address _arbitrator) external {
-    IBicoCertoDisputeResolver(registry.getAdmin()).addArbitrator(_arbitrator);
+        IBicoCertoDisputeResolver(registry.getAdmin()).addArbitrator(_arbitrator);
     }
 
     function removeArbitrator(address _arbitrator) external {
-    IBicoCertoDisputeResolver(registry.getAdmin()).removeArbitrator(_arbitrator);
+        IBicoCertoDisputeResolver(registry.getAdmin()).removeArbitrator(_arbitrator);
     }
 
     function updatePlatformFee(uint256 _newFee) external {
-    IBicoCertoAdmin(registry.getAdmin()).updatePlatformFee(_newFee);
+        IBicoCertoAdmin(registry.getAdmin()).updatePlatformFee(_newFee);
     }
 
     function togglePause() external {
-    IBicoCertoAdmin(registry.getAdmin()).togglePause();
+        IBicoCertoAdmin(registry.getAdmin()).togglePause();
     }
 
     // ====
@@ -189,43 +181,104 @@ contract BicoCerto {
     // ====
 
     function getUserJobs(address _user) external view returns (bytes32[] memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getUserJobs(_user);
+        return IBicoCertoJobManager(registry.getJobManager()).getUserJobs(_user);
     }
 
     function getJob(bytes32 _jobId) external view returns (IBicoCertoJobManager.Job memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getJob(_jobId);
+        return IBicoCertoJobManager(registry.getJobManager()).getJob(_jobId);
     }
 
     function getProposal(bytes32 _proposalId) external view returns (IBicoCertoJobManager.Proposal memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getProposal(_proposalId);
+        return IBicoCertoJobManager(registry.getJobManager()).getProposal(_proposalId);
     }
 
     function getJobProposals(bytes32 _jobId) external view returns (bytes32[] memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getJobProposals(_jobId);
+        return IBicoCertoJobManager(registry.getJobManager()).getJobProposals(_jobId);
     }
 
     function getProviderProposals(address _provider) external view returns (bytes32[] memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getProviderProposals(_provider);
+        return IBicoCertoJobManager(registry.getJobManager()).getProviderProposals(_provider);
     }
 
     function getOpenJobs() external view returns (bytes32[] memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getOpenJobs();
+        return IBicoCertoJobManager(registry.getJobManager()).getOpenJobs();
     }
 
     function getActiveProposalsForJob(bytes32 _jobId) external view returns (IBicoCertoJobManager.Proposal[] memory) {
-    return IBicoCertoJobManager(registry.getJobManager()).getActiveProposalsForJob(_jobId);
+        return IBicoCertoJobManager(registry.getJobManager()).getActiveProposalsForJob(_jobId);
     }
 
+    // ====
+    // FUNÇÕES DE REPUTAÇÃO - NOVAS FUNÇÕES SEPARADAS
+    // ====
+
+    /**
+     * @notice Retorna a avaliação média do usuário como Provider (prestador)
+     * @param _provider Endereço do prestador
+     * @return Média com 2 casas decimais (ex: 425 = 4.25 estrelas)
+     */
+    function getProviderAverageRating(address _provider) external view returns (uint256) {
+        return IBicoCertoReputation(registry.getReputation()).getProviderAverageRating(_provider);
+    }
+
+    /**
+     * @notice Retorna a avaliação média do usuário como Cliente
+     * @param _client Endereço do cliente
+     * @return Média com 2 casas decimais (ex: 425 = 4.25 estrelas)
+     */
+    function getClientAverageRating(address _client) external view returns (uint256) {
+        return IBicoCertoReputation(registry.getReputation()).getClientAverageRating(_client);
+    }
+
+    /**
+     * @notice Retorna o perfil completo do usuário como Provider
+     * @param _provider Endereço do prestador
+     * @return averageRating Média de avaliações (ex: 425 = 4.25)
+     * @return totalRatings Total de avaliações recebidas
+     * @return totalJobs Total de trabalhos realizados
+     * @return totalEarned Total ganho em Wei
+     */
+    function getProviderProfile(address _provider) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalEarned
+    ) {
+        return IBicoCertoReputation(registry.getReputation()).getProviderProfile(_provider);
+    }
+
+    /**
+     * @notice Retorna o perfil completo do usuário como Cliente
+     * @param _client Endereço do cliente
+     * @return averageRating Média de avaliações (ex: 425 = 4.25)
+     * @return totalRatings Total de avaliações recebidas
+     * @return totalJobs Total de trabalhos contratados
+     * @return totalSpent Total gasto em Wei
+     */
+    function getClientProfile(address _client) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalSpent
+    ) {
+        return IBicoCertoReputation(registry.getReputation()).getClientProfile(_client);
+    }
+
+    /**
+     * @notice Mantém compatibilidade com versão anterior (retorna dados como Provider)
+     * @param _user Endereço do usuário
+     * @return User Estrutura de dados do usuário
+     */
     function getUserProfile(address _user) external view returns (IBicoCertoReputation.User memory) {
-    return IBicoCertoReputation(registry.getReputation()).getUserProfile(_user);
+        return IBicoCertoReputation(registry.getReputation()).getUserProfile(_user);
     }
 
     function calculatePlatformFee(uint256 _amount) external view returns (uint256) {
-    return IBicoCertoAdmin(registry.getAdmin()).getPlatformFeePercent() * _amount / 100;
+        return IBicoCertoAdmin(registry.getAdmin()).getPlatformFeePercent() * _amount / 100;
     }
 
     function getRegistryAddress() external view returns (address) {
-    return address(registry);
+        return address(registry);
     }
 
     // ====
@@ -233,10 +286,10 @@ contract BicoCerto {
     // ====
 
     receive() external payable {
-    // Aceitar ETH para a plataforma
+        // Aceitar ETH para a plataforma
     }
-    
+
     fallback() external payable {
-    // Aceitar ETH para a plataforma
+        // Aceitar ETH para a plataforma
     }
 }

@@ -5,7 +5,7 @@ import base64, binascii
 from eth_account import Account
 
 from app.ipfs.ipfs_service import IPFSService
-from app.model.bico_certo_main import BicoCerto, ProposalStatus
+from app.model.bico_certo_main import BicoCerto, ProposalStatus, JobStatus, Reputation
 from app.model.wallet import Wallet
 from app.schema.job_manager import (
     CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptJobRequest, AnswerProposalRequest,
@@ -858,16 +858,13 @@ async def get_open_jobs(
 
         jobs = []
         for job_id in open_job_ids:
-            job_data = bico_certo.contract.functions.getJob(job_id).call()
+            job_data = bico_certo.get_job(job_id).to_dict()
 
-            ipfs_cid = job_data[11]
-            success, message, metadata = ipfs_service.get_job_data(ipfs_cid)
+            success, message, metadata = ipfs_service.get_job_data(job_data["ipfs_hash"])
 
             if success:
-                job_category = job_data[10]
-
                 # Filtrar por categoria se fornecida
-                if category is not None and job_category.lower() != category.lower():
+                if category is not None and job_data["service_type"].lower() != category.lower():
                     continue
 
                 # Filtrar por busca de texto se fornecida
@@ -880,15 +877,19 @@ async def get_open_jobs(
                     if search_lower not in title and search_lower not in description:
                         continue
 
+                pending_proposal_count = 0
+
+                if job_data["total_proposals"] > 0:
+                    proposals = bico_certo.contract.functions.getJobProposals(job_id).call()
+                    for proposal_id in proposals:
+                        proposal_data = bico_certo.contract.functions.getProposal(proposal_id).call()
+                        if ProposalStatus(proposal_data[6]) == ProposalStatus.PENDING:
+                            pending_proposal_count += 1
+
                 jobs.append({
-                    "job_id": job_id.hex(),
-                    "client": job_data[1],
-                    "max_budget": bico_certo.w3.from_wei(job_data[3] + job_data[4], 'ether'),
-                    "deadline": datetime.fromtimestamp(job_data[8]).isoformat(),
-                    "category": job_category,
-                    "proposal_count": job_data[15],
+                    **job_data,
+                    "proposal_count": pending_proposal_count,
                     "metadata": metadata,
-                    "ipfs_cid": ipfs_cid
                 })
 
         message = f"Encontrados {len(jobs)} jobs abertos"
@@ -911,6 +912,80 @@ async def get_open_jobs(
         raise HTTPException(
             status_code=400,
             detail=f"Erro ao buscar jobs abertos: {str(e)}"
+        )
+
+
+@router.get("/my-jobs", response_model=APIResponse)
+async def get_my_jobs(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Lista jobs criados pelo usuário (como cliente)
+    """
+
+    wallet = db.query(Wallet).filter(
+        Wallet.user_id == current_user.id
+    ).first()
+
+    if not wallet:
+        return APIResponse.success_response(
+            data={"jobs": [], "total": 0},
+            message="Você não possui uma carteira"
+        )
+
+    try:
+        # Buscar jobs onde o usuário é o cliente
+        all_jobs = bico_certo.contract.functions.getUserJobs(wallet.address).call()
+
+        jobs = []
+        for job_id in all_jobs:
+            job_data = bico_certo.get_job(job_id).to_dict()
+
+            # Filtrar apenas jobs onde o usuário é o cliente
+            if job_data["client"].lower() != wallet.address.lower():
+                continue
+
+            ipfs_cid = job_data["ipfs_hash"]
+            success, message, metadata = ipfs_service.get_job_data(ipfs_cid)
+
+            pending_proposal_count = 0
+            total_proposals = job_data["total_proposals"]
+            accepted_proposal = None
+
+            if total_proposals > 0:
+                # Buscar todas as propostas do job
+                proposals = bico_certo.contract.functions.getJobProposals(job_id).call()
+
+                for proposal_id in proposals:
+                    proposal_data = bico_certo.contract.functions.getProposal(proposal_id).call()
+                    if job_data["openForProposals"]:
+                        if ProposalStatus(proposal_data[6]) == ProposalStatus.PENDING:
+                            pending_proposal_count += 1
+                    else:
+                        if ProposalStatus(proposal_data[6]) == ProposalStatus.ACCEPTED:
+                            success, message, metadata_proposal = ipfs_service.get_job_data(proposal_data[7])
+                            accepted_proposal = metadata_proposal["data"]
+
+            jobs.append({
+                **job_data,
+                "proposal_count": pending_proposal_count,
+                "metadata": metadata if success else None,
+                "accepted_proposal": accepted_proposal
+            })
+
+        return APIResponse.success_response(
+            data={
+                "jobs": jobs,
+                "total": len(jobs)
+            },
+            message=f"Você criou {len(jobs)} jobs"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao buscar seus jobs: {str(e)}"
         )
 
 @router.get("/job/{job_id}/proposals", response_model=APIResponse)
@@ -993,6 +1068,9 @@ async def get_my_proposals(
             proposal_data = bico_certo.contract.functions.getProposal(proposal_id).call()
             job_data = bico_certo.get_job(proposal_data[1]).to_dict()
 
+            success, message, metadata = ipfs_service.get_job_data(job_data["ipfs_hash"])
+            job_data["metadata"] = metadata
+
             proposals.append({
                 "proposal_id": proposal_id.hex(),
                 "job_id": proposal_data[1].hex(),
@@ -1000,7 +1078,7 @@ async def get_my_proposals(
                 "estimated_time_days": proposal_data[4],
                 "status": ProposalStatus(proposal_data[6]).name,
                 "created_at": datetime.fromtimestamp(proposal_data[5]).isoformat(),
-                "job": {key: job_data[key] for key in ["client", "status", "service_type", "client_rating"]}
+                "job": {**job_data}
             })
 
         return APIResponse.success_response(
@@ -1102,4 +1180,28 @@ async def get_job_active_proposals(job_id: str):
         raise HTTPException(
             status_code=400,
             detail=f"Erro ao buscar propostas: {str(e)}"
+        )
+
+
+@router.get("/reputation", response_model=APIResponse)
+async def get_reputation(address: str):
+    """
+    Recupera as informações da reputação de um Usuario
+    """
+    try:
+        # Buscar jobs abertos do contrato
+        reputation = Reputation(bico_certo.contract.functions.getUserProfile(
+            address
+        ).call()).to_dict()
+
+        return APIResponse.success_response(
+            data={
+             **reputation
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao buscar jobs abertos: {str(e)}"
         )

@@ -7,3 +7,4 @@ test.db
 *.db
 *.log
 .env
+app/firebase-credentials.json
