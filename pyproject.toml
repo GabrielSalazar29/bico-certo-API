@@ -48,6 +48,10 @@ passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 bcrypt = "3.2.2"
 aiohappyeyeballs = "2.6.1"
 pep517 = "^0.13.1"
+reportlab = "^4.4.4"
+openpyxl = "^3.1.5"
+matplotlib = "^3.10.7"
+firebase-admin = "^7.1.0"
 
 
 [build-system]

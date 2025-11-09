@@ -11,10 +11,39 @@ interface IBicoCertoReputation {
         uint256 joinedAt;
     }
 
+    // Eventos
     event RatingGiven(bytes32 indexed jobId, address indexed rater, uint8 rating);
+    event ProviderRated(address indexed provider, uint8 rating);
+    event ClientRated(address indexed client, uint8 rating);
+
+
+    function updateProviderRating(address _provider, uint8 _rating) external;
+
+    function updateClientRating(address _client, uint8 _rating) external;
 
     function updateReputation(address _user, uint8 _rating, bool _positive) external;
+
     function updateUserStats(address _user, uint256 _amount, bool _isProvider) external;
+
     function rateClient(bytes32 _jobId, uint8 _rating) external;
+
+    function getProviderAverageRating(address _provider) external view returns (uint256);
+
+    function getClientAverageRating(address _client) external view returns (uint256);
+
+    function getProviderProfile(address _provider) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalEarned
+    );
+
+    function getClientProfile(address _client) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalSpent
+    );
+
     function getUserProfile(address _user) external view returns (User memory);
 }

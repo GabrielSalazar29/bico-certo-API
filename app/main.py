@@ -1,12 +1,14 @@
+import os
 from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import auth, job_manager, two_factor, password_recovery, wallet, payment_gateway, chat
+from .api import auth, job_manager, two_factor, password_recovery, wallet, dashboard, chat
 from .config.database import engine, Base
 from .config.settings import fuso_local
 from .config.settings import settings
+from .service.fcm_service import FCMService
 
 from .util.responses import APIResponse
 
@@ -74,6 +76,7 @@ app.include_router(wallet.router)
 app.include_router(job_manager.router)
 # app.include_router(payment_gateway.router)
 app.include_router(chat.router)
+app.include_router(dashboard.router)
 
 
 # Root endpoint
@@ -99,3 +102,16 @@ async def health_check():
         },
         message="Sistema operacional"
     )
+
+@app.on_event("startup")
+async def startup_event():
+    credentials_path = os.path.join(
+        os.path.dirname(__file__),
+        'firebase-credentials.json'
+    )
+
+    if os.path.exists(credentials_path):
+        FCMService.initialize(credentials_path)
+        print("✅ Firebase inicializado com sucesso")
+    else:
+        print(f"❌ Arquivo de credenciais não encontrado: {credentials_path}")

@@ -21,7 +21,6 @@ from ..websocket import chat_handler
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-
 @router.post("/room/create", response_model=APIResponse)
 async def create_chat_room(
         request: CreateChatRoomRequest,
@@ -121,6 +120,24 @@ async def send_message(
 
     if not success:
         raise HTTPException(status_code=400, detail=message)
+
+    if receiver_id:
+        receiver = db.query(User).filter(User.id == receiver_id).first()
+
+        if receiver and receiver.fcm_token:
+            from ..service.fcm_service import FCMService
+
+            FCMService.send_notification(
+                token=receiver.fcm_token,
+                title=f"Nova mensagem de {current_user.full_name}",
+                body=request.message[:100],  # Primeiros 100 caracteres
+                data={
+                    "type": "chat_message",
+                    "room_id": request.room_id,
+                    "sender_id": current_user.id,
+                    "sender_name": current_user.full_name
+                }
+            )
 
     from ..websocket.notifications_handler import notifications_manager
     import asyncio
@@ -393,3 +410,17 @@ async def websocket_endpoint(
         db: Session = Depends(get_db)
 ):
     await chat_handler.websocket_chat_endpoint(websocket, room_id, token, db)
+
+
+@router.post("/fcm-token/update", response_model=APIResponse)
+async def update_fcm_token(
+        token: str,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    current_user.fcm_token = token
+    db.commit()
+
+    return APIResponse.success_response(
+        message="Token FCM atualizado com sucesso"
+    )

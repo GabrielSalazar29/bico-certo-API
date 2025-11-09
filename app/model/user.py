@@ -28,6 +28,7 @@ class User(Base):
     # Security
     last_password_change = Column(DateTime(timezone=True))
     password_expires_at = Column(DateTime(timezone=True))
+    fcm_token = Column(String, nullable=True)
 
     # Relationships
     two_factor_settings = relationship("TwoFactorSettings", back_populates="user", uselist=False,

@@ -9,7 +9,25 @@ import "contracts/interfaces/IBicoCertoAdmin.sol";
 contract BicoCertoReputation is IBicoCertoReputation {
     IBicoCertoRegistry public registry;
 
-    mapping(address => User) public users;
+    // Estrutura para armazenar avaliações separadas
+    struct UserReputation {
+        // Dados como Cliente
+        uint256 totalRatingsAsClient;
+        uint256 sumRatingsAsClient;
+        uint256 totalJobsAsClient;
+        uint256 totalSpent;
+
+        // Dados como Provider
+        uint256 totalRatingsAsProvider;
+        uint256 sumRatingsAsProvider;
+        uint256 totalJobsAsProvider;
+        uint256 totalEarned;
+
+        // Dados gerais
+        uint256 joinedAt;
+    }
+
+    mapping(address => UserReputation) public userReputations;
 
     constructor(address _registryAddress) {
         registry = IBicoCertoRegistry(_registryAddress);
@@ -25,78 +43,90 @@ contract BicoCertoReputation is IBicoCertoReputation {
     }
 
     modifier notPaused() {
-    require(!IBicoCertoAdmin(registry.getAdmin()).isPaused(), "Contrato pausado");
-    _;
+        require(!IBicoCertoAdmin(registry.getAdmin()).isPaused(), "Contrato pausado");
+        _;
     }
 
     function _initializeUserIfNeeded(address _user) private {
-        User storage user = users[_user];
-        if (user.joinedAt == 0) {
-            user.joinedAt = block.timestamp;
-            user.reputationScore = 500; // Score inicial neutro
+        UserReputation storage userRep = userReputations[_user];
+        if (userRep.joinedAt == 0) {
+            userRep.joinedAt = block.timestamp;
         }
     }
 
-    function _updateReputation(
-        address _user,
-        uint8 _rating,
-        bool _positive
-    ) private {
-        _initializeUserIfNeeded(_user);
-        User storage user = users[_user];
+    // ═══════════════════════════════════════════════════════
+    // Funções Internas
+    // ═══════════════════════════════════════════════════════
 
-        uint256 currentScore = user.reputationScore;
-        uint256 baseWeight = 20; // Peso base reduzido para melhor granularidade
+    // Função interna para atualizar avaliação do Provider
+    function _updateProviderRating(
+        address _provider,
+        uint8 _rating
+    ) internal {
+        require(_rating > 0 && _rating <= 5, "Avaliacao deve estar entre 1 e 5");
 
-        // Sistema de peso dinâmico baseado no histórico
-        uint256 experienceMultiplier = 100;
-        if (user.totalJobs > 50) {
-            experienceMultiplier = 80; // Menos impacto para usuários experientes
-        } else if (user.totalJobs > 20) {
-            experienceMultiplier = 90;
-        }
+        _initializeUserIfNeeded(_provider);
+        UserReputation storage userRep = userReputations[_provider];
 
-        if (_positive) {
-            // Cálculo mais sofisticado para reputação positiva
-            uint256 baseIncrease = (_rating * baseWeight * experienceMultiplier) / 500;
+        userRep.sumRatingsAsProvider += _rating;
+        userRep.totalRatingsAsProvider++;
+        userRep.totalJobsAsProvider++;
 
-            // Bônus por avaliação máxima
-            if (_rating == 5) {
-                baseIncrease = (baseIncrease * 110) / 100; // 10% de bônus
-            }
-
-            user.reputationScore = currentScore + baseIncrease;
-            if (user.reputationScore > 1000) {
-                user.reputationScore = 1000; // Cap máximo
-            }
-
-            user.successfulJobs++;
-        } else {
-            // Penalidade para avaliações negativas
-            uint256 penalty = ((5 - _rating) * baseWeight * experienceMultiplier) / 500;
-
-            // Penalidade extra para avaliações muito baixas
-            if (_rating <= 2) {
-                penalty = (penalty * 150) / 100; // 50% mais severo
-            }
-
-            if (currentScore > penalty) {
-                user.reputationScore = currentScore - penalty;
-            } else {
-                user.reputationScore = 0;
-            }
-        }
-
-        user.totalJobs++;
+        emit ProviderRated(_provider, _rating);
     }
 
+    // Função interna para atualizar avaliação do Cliente
+    function _updateClientRating(
+        address _client,
+        uint8 _rating
+    ) internal {
+        require(_rating > 0 && _rating <= 5, "Avaliacao deve estar entre 1 e 5");
+
+        _initializeUserIfNeeded(_client);
+        UserReputation storage userRep = userReputations[_client];
+
+        userRep.sumRatingsAsClient += _rating;
+        userRep.totalRatingsAsClient++;
+        userRep.totalJobsAsClient++;
+
+        emit ClientRated(_client, _rating);
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Funções Públicas de Atualização
+    // ═══════════════════════════════════════════════════════
+
+    // Atualiza avaliação do Provider (prestador de serviço)
+    function updateProviderRating(
+        address _provider,
+        uint8 _rating
+    ) external notPaused onlyTrustedContracts {
+        _updateProviderRating(_provider, _rating);
+    }
+
+    // Atualiza avaliação do Cliente
+    function updateClientRating(
+        address _client,
+        uint8 _rating
+    ) external notPaused onlyTrustedContracts {
+        _updateClientRating(_client, _rating);
+    }
+
+    // Mantém compatibilidade com interface antiga
     function updateReputation(
         address _user,
         uint8 _rating,
         bool _positive
     ) external notPaused onlyTrustedContracts {
         require(_rating > 0 && _rating <= 5, "Avaliacao deve estar entre 1 e 5");
-        _updateReputation(_user, _rating, _positive);
+
+        _initializeUserIfNeeded(_user);
+        UserReputation storage userRep = userReputations[_user];
+
+        // Assume que é Provider por padrão para manter compatibilidade
+        userRep.sumRatingsAsProvider += _rating;
+        userRep.totalRatingsAsProvider++;
+        userRep.totalJobsAsProvider++;
     }
 
     function updateUserStats(
@@ -105,12 +135,12 @@ contract BicoCertoReputation is IBicoCertoReputation {
         bool _isProvider
     ) external notPaused onlyTrustedContracts {
         _initializeUserIfNeeded(_user);
-        User storage user = users[_user];
+        UserReputation storage userRep = userReputations[_user];
 
         if (_isProvider) {
-            user.totalEarned += _amount;
+            userRep.totalEarned += _amount;
         } else {
-            user.totalSpent += _amount;
+            userRep.totalSpent += _amount;
         }
     }
 
@@ -127,12 +157,106 @@ contract BicoCertoReputation is IBicoCertoReputation {
         require(_rating > 0 && _rating <= 5, "Avaliacao deve estar entre 1 e 5");
 
         jobManager.updateJobProviderRating(_jobId, _rating);
-        _updateReputation(job.client, _rating, true);
+
+        // Chama função interna ao invés de externa
+        _updateClientRating(job.client, _rating);
 
         emit RatingGiven(_jobId, msg.sender, _rating);
     }
 
+    // ═══════════════════════════════════════════════════════
+    // Funções de Consulta
+    // ═══════════════════════════════════════════════════════
+
+    // Calcula média como Provider (com 2 casas decimais: 425 = 4.25)
+    function getProviderAverageRating(address _provider) external view returns (uint256) {
+        UserReputation storage userRep = userReputations[_provider];
+
+        if (userRep.totalRatingsAsProvider == 0) {
+            return 0;
+        }
+
+        // Retorna média multiplicada por 100 para ter 2 casas decimais
+        return (userRep.sumRatingsAsProvider * 100) / userRep.totalRatingsAsProvider;
+    }
+
+    // Calcula média como Cliente (com 2 casas decimais: 425 = 4.25)
+    function getClientAverageRating(address _client) external view returns (uint256) {
+        UserReputation storage userRep = userReputations[_client];
+
+        if (userRep.totalRatingsAsClient == 0) {
+            return 0;
+        }
+
+        // Retorna média multiplicada por 100 para ter 2 casas decimais
+        return (userRep.sumRatingsAsClient * 100) / userRep.totalRatingsAsClient;
+    }
+
+    // Retorna dados do usuário como Provider
+    function getProviderProfile(address _provider) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalEarned
+    ) {
+        UserReputation storage userRep = userReputations[_provider];
+
+        if (userRep.totalRatingsAsProvider > 0) {
+            averageRating = (userRep.sumRatingsAsProvider * 100) / userRep.totalRatingsAsProvider;
+        } else {
+            averageRating = 0;
+        }
+
+        return (
+            averageRating,
+            userRep.totalRatingsAsProvider,
+            userRep.totalJobsAsProvider,
+            userRep.totalEarned
+        );
+    }
+
+    // Retorna dados do usuário como Cliente
+    function getClientProfile(address _client) external view returns (
+        uint256 averageRating,
+        uint256 totalRatings,
+        uint256 totalJobs,
+        uint256 totalSpent
+    ) {
+        UserReputation storage userRep = userReputations[_client];
+
+        if (userRep.totalRatingsAsClient > 0) {
+            averageRating = (userRep.sumRatingsAsClient * 100) / userRep.totalRatingsAsClient;
+        } else {
+            averageRating = 0;
+        }
+
+        return (
+            averageRating,
+            userRep.totalRatingsAsClient,
+            userRep.totalJobsAsClient,
+            userRep.totalSpent
+        );
+    }
+
+    // Mantém compatibilidade com getUserProfile (retorna dados como Provider)
     function getUserProfile(address _user) external view returns (User memory) {
-    return users[_user];
+        UserReputation storage userRep = userReputations[_user];
+
+        User memory user;
+        user.joinedAt = userRep.joinedAt;
+        user.totalJobs = userRep.totalJobsAsProvider;
+        user.totalEarned = userRep.totalEarned;
+        user.totalSpent = userRep.totalSpent;
+        user.successfulJobs = userRep.totalJobsAsProvider;
+
+        // Calcula reputationScore baseado na média como Provider (convertido para escala 0-1000)
+        if (userRep.totalRatingsAsProvider > 0) {
+            uint256 average = (userRep.sumRatingsAsProvider * 100) / userRep.totalRatingsAsProvider;
+            user.reputationScore = (average * 1000) / 500; // Converte média (0-500) para escala 0-1000
+        } else {
+            user.reputationScore = 500; // Score inicial neutro
+        }
+
+        return user;
     }
 }
