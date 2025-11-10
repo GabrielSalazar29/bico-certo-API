@@ -58,6 +58,67 @@ class JobNotificationService:
             print(f"Erro ao enviar via WebSocket: {e}")
 
     @staticmethod
+    async def notify_receiver(
+            db: Session,
+            receiver_address: str,
+            amount: float,
+            tx_hash: str,
+            sender_address: str
+    ):
+        """Envia notificação apenas para quem recebeu o dinheiro"""
+        try:
+            # Buscar a carteira do destinatário
+            receiver_wallet = db.query(Wallet).filter(
+                Wallet.address == receiver_address
+            ).first()
+
+            if not receiver_wallet:
+                print(f"Destinatário {receiver_address} não é usuário da plataforma")
+                return
+
+            # Buscar o usuário
+            receiver = db.query(User).filter(
+                User.id == receiver_wallet.user_id
+            ).first()
+
+            if not receiver:
+                print(f"Usuário não encontrado para carteira {receiver_address}")
+                return
+
+            message = f"Você recebeu R$ {amount:.2f}"
+
+            from ..websocket.notifications_handler import notifications_manager
+
+            await notifications_manager.send_to_user(receiver.id, {
+                "type": "wallet_update",
+                "data": {
+                    "transaction_type": "receive",
+                    "amount": amount,
+                    "from": sender_address,
+                    "to": receiver_address,
+                    "tx_hash": tx_hash,
+                    "message": message
+                }
+            })
+
+            if receiver.fcm_token:
+                from ..service.fcm_service import FCMService
+
+                FCMService.send_notification(
+                    token=receiver.fcm_token,
+                    title="Pagamento Recebido! 💰",
+                    body=message,
+                    data={
+                        "type": "wallet_transaction",
+                        "transaction_type": "receive",
+                        "tx_hash": tx_hash,
+                    }
+                )
+
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
+    @staticmethod
     def notify_proposal_accepted(
             db: Session,
             provider_address: str,

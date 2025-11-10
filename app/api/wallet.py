@@ -6,6 +6,7 @@ from web3 import Web3
 from ..config.settings import fuso_local, settings
 from ..config.database import get_db
 from ..model.wallet import Wallet
+from ..service.job_notification_service import JobNotificationService
 from ..wallet.blockchain_service import BlockchainService
 from ..wallet.wallet_service import WalletService
 from ..wallet.transaction import TransactionSigner
@@ -19,7 +20,7 @@ from ..schema.wallet import (
 from ..util.responses import APIResponse
 from ..auth.dependencies import get_current_user
 from ..model.user import User
-
+import asyncio
 
 router = APIRouter(prefix="/wallet", tags=["Wallet"])
 
@@ -231,6 +232,16 @@ async def transfer_eth(
         wallet.last_transaction = datetime.now(fuso_local)
         db.commit()
 
+        asyncio.create_task(
+            JobNotificationService.notify_receiver(
+                db=db,
+                receiver_address=request.to_address,
+                amount=request.amount_eth,
+                tx_hash=tx_hash,
+                sender_address=wallet.address
+            )
+        )
+
         return APIResponse.success_response(
             data={
                 "tx_hash": tx_hash,
@@ -248,7 +259,7 @@ async def transfer_eth(
 @router.get("/transactions", response_model=APIResponse)
 async def list_blockchain_transactions(
         limit: int = 20,
-        filter_type: Optional[str] = None,  # send, receive, all
+        filter_type: Optional[str] = None,
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
