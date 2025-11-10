@@ -10,6 +10,8 @@ from app.schema.job_manager import (
     CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptJobRequest, AnswerProposalRequest,
     CompleteJobRequest, ApproveJobRequest, CancelJobRequest)
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.service.job_notification_service import JobNotificationService
 from app.util.responses import APIResponse
 from sqlalchemy.orm import Session
 from app.config.database import get_db
@@ -357,6 +359,18 @@ async def submit_proposal(
 
         proposal_info = bico_certo.get_proposal_from_receipt(receipt)
 
+        try:
+            job = bico_certo.get_job(bytes.fromhex(request.job_id))
+            JobNotificationService.notify_new_proposal(
+                db=db,
+                client_address=job.client,
+                job_id=request.job_id,
+                ipfs_hash=job.ipfs_hash,
+                provider_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação de nova proposta: {e}")
+
         return APIResponse.success_response(
             data={
                 "proposal_id": proposal_info['proposal_id'].hex(),
@@ -471,6 +485,19 @@ async def complete_job(
         if receipt['status'] != 1:
             raise HTTPException(status_code=400, detail="Transação falhou na blockchain.")
 
+        try:
+            job = bico_certo.get_job(job_id_bytes)
+
+            JobNotificationService.notify_job_completed(
+                db=db,
+                client_address=job.client,
+                job_id=request.job_id,
+                ipfs_hash=job.ipfs_hash,
+                provider_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
         return APIResponse.success_response(
             data={"transaction_hash": tx_hash.hex(), "status": "completed"},
             message="Job marcado como concluído com sucesso!"
@@ -509,6 +536,20 @@ async def approve_job(
 
         if receipt['status'] != 1:
             raise HTTPException(status_code=400, detail="Transação falhou na blockchain.")
+
+        try:
+            job = bico_certo.get_job(job_id_bytes)
+
+            JobNotificationService.notify_job_approved(
+                db=db,
+                provider_address=job.provider,
+                job_id=request.job_id,
+                ipfs_hash=job.ipfs_hash,
+                client_name=current_user.full_name,
+                rating=request.rating
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
 
         return APIResponse.success_response(
             data={"transaction_hash": tx_hash.hex(), "status": "approved"},
@@ -633,6 +674,22 @@ async def accept_proposal(
                 detail="Transação falhou na blockchain"
             )
 
+        try:
+            proposal = bico_certo.contract.functions.getProposal(
+                bytes.fromhex(request.proposal_id)
+            ).call()
+            job = bico_certo.get_job(proposal[1])
+
+            JobNotificationService.notify_proposal_accepted(
+                db=db,
+                provider_address=proposal[2],
+                job_id=proposal[1].hex(),
+                ipfs_hash=job.ipfs_hash,
+                client_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
         return APIResponse.success_response(
             data={
                 "proposal_id": request.proposal_id,
@@ -704,6 +761,22 @@ async def reject_proposal(
                 status_code=400,
                 detail="Transação falhou na blockchain"
             )
+
+        try:
+            proposal = bico_certo.contract.functions.getProposal(
+                bytes.fromhex(request.proposal_id)
+            ).call()
+            job = bico_certo.get_job(proposal[1])
+
+            JobNotificationService.notify_proposal_rejected(
+                db=db,
+                provider_address=proposal[2],
+                job_id=proposal[1].hex(),
+                ipfs_hash=job.ipfs_hash,
+                client_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
 
         return APIResponse.success_response(
             data={

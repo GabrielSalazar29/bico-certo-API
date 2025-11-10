@@ -100,6 +100,67 @@ async def get_room_messages(
         message="Mensagens recuperadas com sucesso"
     )
 
+@router.get("/room/{room_id}/info", response_model=APIResponse)
+async def get_room_info(
+        room_id: str,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Retorna informações básicas de uma sala"""
+    try:
+        room = db.query(ChatRoom).filter(ChatRoom.id == room_id).first()
+
+        if not room:
+            raise HTTPException(status_code=404, detail="Sala não encontrada")
+
+        # Verificar se usuário tem acesso
+        if room.client_id != current_user.id and room.provider_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Sem permissão para acessar esta sala")
+
+        # Buscar título do job no IPFS
+        job_title = 'Chat'
+        try:
+            from ..model.bico_certo_main import BicoCerto
+            from ..ipfs.ipfs_service import IPFSService
+
+            bico_certo = BicoCerto()
+            job_obj = bico_certo.get_job(bytes.fromhex(room.job_id))
+
+            if hasattr(job_obj, 'ipfs_hash') and job_obj.ipfs_hash:
+                ipfs_service = IPFSService()
+                success, _, ipfs_data = ipfs_service.get_job_data(job_obj.ipfs_hash)
+
+                if success and ipfs_data:
+                    job_title = ipfs_data.get('data', {}).get('title', 'Chat')
+                    if job_title:
+                        job_title = job_title.title()
+        except Exception as e:
+            print(f"Erro ao buscar título do IPFS: {e}")
+
+        # Buscar dados do outro participante
+        other_user_id = room.provider_id if room.client_id == current_user.id else room.client_id
+        other_user = db.query(User).filter(User.id == other_user_id).first()
+
+        return APIResponse.success_response(
+            data={
+                "room_id": room.id,
+                "job_id": room.job_id,
+                "job_title": job_title,
+                "is_active": room.is_active,
+                "other_user": {
+                    "id": other_user.id if other_user else None,
+                    "name": other_user.full_name if other_user else "Usuário",
+                    "email": other_user.email if other_user else None
+                } if other_user else None
+            },
+            message="Informações da sala recuperadas"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar informações: {str(e)}")
+
 
 @router.post("/send", response_model=APIResponse)
 async def send_message(
@@ -130,12 +191,10 @@ async def send_message(
             FCMService.send_notification(
                 token=receiver.fcm_token,
                 title=f"Nova mensagem de {current_user.full_name}",
-                body=request.message[:100],  # Primeiros 100 caracteres
+                body=request.message[:100],
                 data={
                     "type": "chat_message",
                     "room_id": request.room_id,
-                    "sender_id": current_user.id,
-                    "sender_name": current_user.full_name
                 }
             )
 
