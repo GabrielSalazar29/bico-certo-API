@@ -1,8 +1,11 @@
+# app/service/job_notification_service.py
+
 from sqlalchemy.orm import Session
 from ..model.user import User
 from ..model.wallet import Wallet
 from .fcm_service import FCMService
 from ..ipfs.ipfs_service import IPFSService
+import asyncio
 
 
 class JobNotificationService:
@@ -38,6 +41,23 @@ class JobNotificationService:
             return None
 
     @staticmethod
+    async def _send_websocket_update(user_id: str, job_id: str, status: str, message: str):
+        """Envia atualização via WebSocket"""
+        try:
+            from ..websocket.notifications_handler import notifications_manager
+
+            await notifications_manager.send_to_user(user_id, {
+                "type": "job_status_update",
+                "data": {
+                    "job_id": job_id,
+                    "status": status,
+                    "message": message
+                }
+            })
+        except Exception as e:
+            print(f"Erro ao enviar via WebSocket: {e}")
+
+    @staticmethod
     def notify_proposal_accepted(
             db: Session,
             provider_address: str,
@@ -49,21 +69,32 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, provider_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{client_name} aceitou sua proposta para '{job_title}'"
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Proposta Aceita! 🎉",
-                body=f"{client_name} aceitou sua proposta para '{job_title}'",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "accepted",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="accepted",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Proposta Aceita! 🎉",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "accepted",
+                    }
+                )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
 
@@ -79,21 +110,32 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, provider_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{client_name} rejeitou sua proposta para '{job_title}'"
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Proposta Rejeitada",
-                body=f"{client_name} rejeitou sua proposta para '{job_title}'",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "rejected",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="rejected",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Proposta Rejeitada",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "rejected",
+                    }
+                )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
 
@@ -109,21 +151,32 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, client_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{provider_name} concluiu o trabalho '{job_title}'. Aguardando sua aprovação."
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Trabalho Concluído! ✅",
-                body=f"{provider_name} concluiu o trabalho '{job_title}'. Aguardando sua aprovação.",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "completed",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="completed",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Trabalho Concluído! ✅",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "completed",
+                    }
+                )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
 
@@ -140,23 +193,34 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, provider_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
-
             stars = "⭐" * rating
+            notification_message = f"{client_name} aprovou '{job_title}' - Avaliação: {stars}"
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Pagamento Liberado! 💰",
-                body=f"{client_name} aprovou '{job_title}' - Avaliação: {stars}",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "approved",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="approved",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Pagamento Liberado! 💰",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "approved",
+                    }
+                )
+
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
 
@@ -172,21 +236,32 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, client_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{provider_name} aceitou o trabalho '{job_title}'"
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Job Aceito! 🤝",
-                body=f"{provider_name} aceitou o trabalho '{job_title}'",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "in_progress",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="in_progress",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Job Aceito! 🤝",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "in_progress",
+                    }
+                )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
 
@@ -202,20 +277,31 @@ class JobNotificationService:
         try:
             user = JobNotificationService._get_user_by_wallet_address(db, client_address)
 
-            if not user or not user.fcm_token:
+            if not user:
                 return
 
             job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{provider_name} enviou uma proposta para '{job_title}'"
 
-            FCMService.send_notification(
-                token=user.fcm_token,
-                title="Nova Proposta Recebida! 📩",
-                body=f"{provider_name} enviou uma proposta para '{job_title}'",
-                data={
-                    "type": "job_status_change",
-                    "job_id": job_id,
-                    "status": "new_proposal",
-                }
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="new_proposal",
+                    message=notification_message
+                )
             )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Nova Proposta Recebida! 📩",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "new_proposal",
+                    }
+                )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")

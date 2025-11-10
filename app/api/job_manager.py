@@ -881,9 +881,18 @@ async def get_job(
             detail=f"Erro ao recuperar dados do IPFS: {message}"
         )
 
+    pending_proposal_count = 0
+    if job_data["total_proposals"] > 0:
+        proposals = bico_certo.contract.functions.getJobProposals(bytes.fromhex(job_id)).call()
+        for proposal_id in proposals:
+            proposal_data = bico_certo.contract.functions.getProposal(proposal_id).call()
+            if ProposalStatus(proposal_data[6]) == ProposalStatus.PENDING:
+                pending_proposal_count += 1
+
     return APIResponse.success_response(
         data={
             **job_data,
+            "pending_proposal_count": pending_proposal_count,
             "metadata": metadata
         },
         message="Informações do Job recuperadas com sucesso"
@@ -934,7 +943,7 @@ async def get_open_jobs(
 
                 jobs.append({
                     **job_data,
-                    "proposal_count": pending_proposal_count,
+                    "pending_proposal_count": pending_proposal_count,
                     "metadata": metadata,
                 })
 
@@ -1015,7 +1024,7 @@ async def get_my_jobs(
 
             jobs.append({
                 **job_data,
-                "proposal_count": pending_proposal_count,
+                "pending_proposal_count": pending_proposal_count,
                 "metadata": metadata if success else None,
                 "accepted_proposal": accepted_proposal
             })
