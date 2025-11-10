@@ -10,7 +10,7 @@ from ..model.device import Device
 from ..util.responses import APIResponse
 from ..util.validators import PasswordValidator, EmailValidator
 from ..util.exceptions import ValidationException
-from ..schema.user import UserCreate
+from ..schema.user import UserCreate, UserProfileUpdate, UserResponse
 from ..schema.auth import LoginRequest, RefreshRequest, TokenResponse
 from ..util.security import hash_password, verify_password
 from ..util.device import generate_fingerprint
@@ -426,7 +426,11 @@ async def get_me(
                 "email": current_user.email,
                 "full_name": current_user.full_name,
                 "is_active": current_user.is_active,
-                "created_at": current_user.created_at.isoformat()
+                "created_at": current_user.created_at.isoformat(),
+                "description": current_user.description,
+                "city": current_user.city,
+                "state": current_user.state,
+                "profile_pic_url": current_user.profile_pic_url
             },
             "security": {
                 "active_sessions": active_sessions,
@@ -436,6 +440,45 @@ async def get_me(
         },
         message="Dados recuperados com sucesso"
     )
+
+@router.put("/profile", response_model=APIResponse)
+async def update_profile(
+    profile_data: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza o perfil do usuário (nome, descrição, local, foto)
+    """
+    
+    update_data = profile_data.model_dump(exclude_unset=True)
+
+    if not update_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nenhum dado fornecido para atualização"
+        )
+
+    for key, value in update_data.items():
+        if hasattr(current_user, key):
+            setattr(current_user, key, value)
+
+    try:
+        db.commit()
+        db.refresh(current_user)
+
+        updated_user_data = UserResponse.model_validate(current_user).model_dump()
+
+        return APIResponse.success_response(
+            data=updated_user_data,
+            message="Perfil atualizado com sucesso"
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao atualizar perfil: {str(e)}"
+        )
 
 
 @router.get("/sessions", response_model=APIResponse)
