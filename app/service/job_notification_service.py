@@ -85,7 +85,9 @@ class JobNotificationService:
                 print(f"Usuário não encontrado para carteira {receiver_address}")
                 return
 
-            message = f"Você recebeu R$ {amount:.2f}"
+            formato_us = f'{amount:,.2f}'
+
+            message = f"Você recebeu R$ {formato_us.translate(str.maketrans(',.', '.,'))}"
 
             from ..websocket.notifications_handler import notifications_manager
 

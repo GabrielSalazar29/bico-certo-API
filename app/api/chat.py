@@ -483,3 +483,16 @@ async def update_fcm_token(
     return APIResponse.success_response(
         message="Token FCM atualizado com sucesso"
     )
+
+@router.delete("/fcm-token/remove", response_model=APIResponse)
+async def remove_fcm_token(
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """Remove o FCM token do usuário (usado no logout)"""
+    current_user.fcm_token = None
+    db.commit()
+
+    return APIResponse.success_response(
+        message="Token FCM removido com sucesso"
+    )

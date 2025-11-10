@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -285,8 +286,10 @@ async def list_blockchain_transactions(
 
     transactions = result.get("transactions", [])
 
+    transactions = [tx for tx in transactions if tx.get("value", 0) != 0]
+
     if filter_type and filter_type in ["send", "receive"]:
-        transactions = [tx for tx in transactions if tx["type"] == filter_type]
+        transactions = [tx for tx in transactions if tx["type"] == filter_type and tx["value"] != 0]
 
     safe_transactions = []
 
