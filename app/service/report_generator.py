@@ -15,7 +15,6 @@ import matplotlib
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -47,6 +46,12 @@ class NumberedCanvas(canvas.Canvas):
         )
 
 
+def format_brl(amount):
+    formato_us = f'{amount:,.2f}'
+
+    return formato_us.translate(str.maketrans(',.', '.,'))
+
+
 class ReportGenerator:
     """Gerador de relatórios em PDF e Excel"""
 
@@ -70,7 +75,7 @@ class ReportGenerator:
         ax.spines['left'].set_linewidth(1.5)
         ax.spines['bottom'].set_linewidth(1.5)
 
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {format_brl(x)}'))
 
         plt.xticks(rotation=0, fontsize=11)
         plt.yticks(fontsize=11)
@@ -98,7 +103,7 @@ class ReportGenerator:
             height = bar.get_height()
             if height > 0:
                 ax.text(bar.get_x() + bar.get_width() / 2., height,
-                        f'R$ {height:,.0f}',
+                        f'R$ {format_brl(height)}',
                         ha='center', va='bottom', fontsize=10, fontweight='bold')
 
         ax.set_title(title, fontsize=16, fontweight='bold', pad=20)
@@ -110,7 +115,7 @@ class ReportGenerator:
         ax.spines['left'].set_linewidth(1.5)
         ax.spines['bottom'].set_linewidth(1.5)
 
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {x:,.0f}'))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'R$ {format_brl(x)}'))
 
         plt.xticks(rotation=45, ha='right', fontsize=10)
         plt.yticks(fontsize=11)
@@ -315,7 +320,7 @@ class ReportGenerator:
 
         card2_data = [
             ['Ganhos Totais'],
-            [f'R$ {data.get("totalEarnings", 0):.2f}'],
+            [f'R$ {format_brl(data.get("totalEarnings", 0))}'],
         ]
         card2 = Table(card2_data, colWidths=[3 * inch], rowHeights=[0.5 * inch, 1 * inch])
         card2.setStyle(TableStyle([
@@ -454,9 +459,9 @@ class ReportGenerator:
 
         earnings_stats = [
             ['Total Acumulado', 'Media Mensal', 'Maior Ganho'],
-            [f'R$ {total_earnings:.2f}',
-             f'R$ {avg_monthly:.2f}',
-             f'R$ {metrics.get("highestEarningJob", 0):.2f}'],
+            [f'R$ {format_brl(total_earnings)}',
+             f'R$ {format_brl(avg_monthly)}',
+             f'R$ {format_brl(metrics.get("highestEarningJob", 0))}'],
         ]
 
         earnings_table = Table(earnings_stats, colWidths=[2.16 * inch, 2.16 * inch, 2.16 * inch])
@@ -514,8 +519,8 @@ class ReportGenerator:
                 cat_data.append([
                     cat['category'],
                     str(cat['count']),
-                    f"R$ {cat['earnings']:.2f}",
-                    f"R$ {avg_per_job:.2f}"
+                    f"R$ {format_brl(cat['earnings'])}",
+                    f"R$ {format_brl(avg_per_job)}"
                 ])
 
             cat_table = Table(cat_data, colWidths=[2 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
@@ -543,10 +548,10 @@ class ReportGenerator:
 
         metrics_data = [
             ['Metrica', 'Valor'],
-            ['Valor Medio por Job', f'R$ {metrics.get("averageJobValue", 0):.2f}'],
+            ['Valor Medio por Job', f'R$ {format_brl(metrics.get("averageJobValue", 0))}'],
             ['Tempo Medio de Entrega', f'{metrics.get("averageDeliveryTime", 0):.1f} dias'],
             ['Total de Clientes Atendidos', str(metrics.get("totalClients", 0))],
-            ['Job Mais Lucrativo', f'R$ {metrics.get("highestEarningJob", 0):.2f}'],
+            ['Job Mais Lucrativo', f'R$ {format_brl(metrics.get("highestEarningJob", 0))}'],
             ['Ultimo Job Realizado', metrics.get("lastJobDate", "N/A")],
             ['Jobs Ativos', str(data.get("activeJobs", 0))],
             ['Propostas Pendentes', str(data.get("pendingProposals", 0))],
@@ -726,7 +731,7 @@ class ReportGenerator:
 
         card3_data = [
             ['Total Gasto'],
-            [f'R$ {data.get("totalSpent", 0):.2f}'],
+            [f'R$ {format_brl(data.get("totalSpent", 0))}'],
         ]
         card3 = Table(card3_data, colWidths=[3 * inch], rowHeights=[0.5 * inch, 1 * inch])
         card3.setStyle(TableStyle([
@@ -917,7 +922,7 @@ class ReportGenerator:
 
         metrics_summary = [
             ['Jobs Concluidos', data.get('completedJobs', 0)],
-            ['Ganhos Totais', f"R$ {data.get('totalEarnings', 0):.2f}"],
+            ['Ganhos Totais', f"R$ {format_brl(data.get('totalEarnings', 0))}"],
             ['Avaliacao Media', f"{data.get('averageRating', 0):.1f}"],
             ['Taxa de Aceitacao', f"{data.get('proposalAcceptanceRate', 0)}%"],
             ['Jobs Ativos', data.get('activeJobs', 0)],
@@ -1032,7 +1037,7 @@ class ReportGenerator:
         metrics_summary = [
             ['Jobs Ativos', data.get('activeJobs', 0)],
             ['Jobs Concluidos', data.get('completedJobs', 0)],
-            ['Total Gasto', f"R$ {data.get('totalSpent', 0):.2f}"],
+            ['Total Gasto', f"R$ {format_brl(data.get('totalSpent', 0))}"],
             ['Prestadores Contratados', data.get('providersHired', 0)],
             ['Aprovacoes Pendentes', data.get('pendingApprovals', 0)],
         ]
