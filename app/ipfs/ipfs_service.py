@@ -31,26 +31,19 @@ class IPFSService:
         Retorna: (sucesso, mensagem, cid)
         """
         try:
-            # 💡 Adiciona os bytes diretamente ao IPFS
+            print(f"\nrequisitando do IPFS\n")
             result = self.client.add_bytes(data_bytes) 
-            print(f" Resultado do Resul {result},  >>>> Type: {type(result)}")
-            # Caso o resul retorne apenas uma string hash do CID
             if isinstance(result, str):
                 cid = result    
             
-            #Caso o result seja um dicionario contendo o hash do CID
             elif isinstance(result, dict) and 'Hash' in result:
-            # CASO 2: A biblioteca retornou o dicionário padrão (JSON).
                 cid = result['Hash']
             
             else:
-            # Resposta inválida (não é string nem dict com 'Hash')
-                print(f"\nResposta do IPFS inválida: {result}\n")
                 return False, f"Resposta do IPFS inválida: {result}", None
 
-            # Verifica se o CID foi encontrado
+
             if not cid:
-                print("O CID não foi encontrado na resposta do IPFS.")
                 return False, "O CID não foi encontrado na resposta do IPFS.", None
                           
             self.client.pin.add(cid)
@@ -62,6 +55,19 @@ class IPFSService:
             print(f"Erro ao adicionar bytes ao IPFS: {str(e)}")
             return False, f"Erro ao adicionar bytes ao IPFS: {str(e)}", None
         
+    def get_bytes_image_data(self, cid: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """
+        Recupera dados do job do IPFS usando o CID
+        Retorna: (sucesso, mensagem, dados)
+        """
+        try:
+            data = self.client.get_bytes(cid)
+
+            return True, "Dados recuperados do IPFS", data
+
+        except Exception as e:
+            return False, f"Erro ao recuperar do IPFS: {str(e)}", None
+
 
     def add_data_to_ipfs(self, data: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
         """
@@ -98,6 +104,7 @@ class IPFSService:
 
         except Exception as e:
             return False, f"Erro ao recuperar do IPFS: {str(e)}", None
+    
 
     def unpin_cid(self, cid: str) -> bool:
         """

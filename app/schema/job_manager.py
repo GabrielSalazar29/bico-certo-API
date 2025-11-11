@@ -25,7 +25,7 @@ class CreateOpenJobRequest(BaseModel):
     description: str = Field(..., min_length=10, max_length=2000)
     category: str = Field(..., min_length=3, max_length=50)
     location: str = Field(..., min_length=3, max_length=100)
-    images: List[str] = Field([], description="Coded images list in Base64")
+    job_images: List[str] = Field([], description="Coded images list in Base64")
     max_budget_eth: float = Field(..., gt=0, description="Orçamento máximo em ETH")
     deadline: str = Field(..., description="Formato DD-MM-YYYY")
     password: str = Field(..., description="Senha do usuário")
