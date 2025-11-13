@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Optional
+import base64, binascii
 
 from eth_account import Account
 
@@ -45,6 +46,8 @@ async def create_job(
             status_code=400,
             detail="Você precisa criar uma carteira primeiro"
         )
+
+    
 
     job_metadata = {
         "title": request.title,
@@ -183,6 +186,25 @@ async def create_open_job(
             detail="Você precisa criar uma carteira primeiro"
         )
 
+
+        image_cids = []
+    
+    
+    
+    image_cids = []
+    if request.job_images:
+            for base64_string in request.job_images:
+                try:
+                    sucess_img, msg_img, cid = ipfs_service.add_bytes_to_ipfs(base64_string) 
+
+                    if not sucess_img:
+                        raise HTTPException(status_code=500, detail=f"Erro ao salvar imagens no IPFS: {msg_img}")
+                    image_cids.append(cid)
+
+                except Exception as e:
+                    HTTPException(status_code=500, detail=f"Erro no processamento de sub-dados: {e}")
+                    
+
     # Preparar metadata do job para IPFS
     job_metadata = {
         "title": request.title,
@@ -191,6 +213,7 @@ async def create_open_job(
         "location": request.location,
         "max_budget": request.max_budget_eth,
         "deadline": request.deadline,
+        "job_images": image_cids,
         "employer": {
             "address": wallet.address,
             "user_id": current_user.id,
@@ -199,6 +222,7 @@ async def create_open_job(
         "open_for_proposals": True,
         "created_at": datetime.now(fuso_local).isoformat()
     }
+
 
     success, message, ipfs_cid = ipfs_service.add_data_to_ipfs(job_metadata)
 
@@ -279,7 +303,6 @@ async def create_open_job(
             status_code=400,
             detail=f"Erro ao criar job: {str(e)}"
         )
-
 
 @router.post("/submit-proposal", response_model=APIResponse)
 async def submit_proposal(
@@ -505,7 +528,6 @@ async def complete_job(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao concluir o job: {str(e)}")
 
-
 @router.post("/approve", response_model=APIResponse)
 async def approve_job(
         request: ApproveJobRequest,
@@ -566,7 +588,6 @@ async def approve_job(
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao aprovar o job: {str(e)}")
-
 
 @router.post("/cancel", response_model=APIResponse)
 async def cancel_job(
@@ -1016,6 +1037,9 @@ async def get_open_jobs(
             job_data = bico_certo.get_job(job_id).to_dict()
 
             success, message, metadata = ipfs_service.get_job_data(job_data["ipfs_hash"])
+            success_image, message_image, metadata_image = ipfs_service.get_job_data(metadata["data"])
+            print(f"\n\n{metadata_image}\n\n")
+
 
             if success:
                 # Filtrar por categoria se fornecida
