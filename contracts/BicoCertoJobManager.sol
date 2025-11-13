@@ -433,6 +433,53 @@ contract BicoCertoJobManager is IBicoCertoJobManager {
         emit JobApproved(_jobId, _client, job.amount, job.platformFee);
     }
 
+
+    function cancelOpenJob(bytes32 _jobId, address _sender) external notPaused {
+        Job storage job = jobs[_jobId];
+
+        require(job.client == _sender, "Apenas cliente pode cancelar");
+        require(job.status == JobStatus.Open, "Apenas jobs abertos podem ser cancelados");
+        require(job.openForProposals, "Job nao esta mais aberto");
+
+        job.status = JobStatus.Cancelled;
+        job.openForProposals = false;
+
+        bytes32[] memory proposalIds = jobProposals[_jobId];
+        for (uint i = 0; i < proposalIds.length; i++) {
+            if (proposals[proposalIds[i]].status == ProposalStatus.Pending) {
+                proposals[proposalIds[i]].status = ProposalStatus.Rejected;
+
+                emit ProposalRejected(
+                    proposalIds[i],
+                    _jobId,
+                    proposals[proposalIds[i]].provider
+                );
+            }
+        }
+
+        _removeFromOpenJobs(_jobId);
+
+        IBicoCertoPaymentGateway(registry.getPaymentGateway()).refundClient(
+            _jobId,
+            job.client,
+            job.amount + job.platformFee
+        );
+
+        emit JobCancelled(_jobId, _sender);
+    }
+
+    function rejectCompletedJob(bytes32 _jobId, address _sender) external notPaused {
+        Job storage job = jobs[_jobId];
+
+        require(job.client == _sender, "Apenas cliente pode reprovar");
+        require(job.status == JobStatus.Completed, "Job nao esta completo");
+
+        job.status = JobStatus.InProgress;
+        job.completedAt = 0;
+
+        emit JobRejected(_jobId, _sender, block.timestamp);
+    }
+
     function _cancelJob(bytes32 _jobId, address _client) private {
         Job storage job = jobs[_jobId];
         require(job.client == _client, "Apenas cliente");

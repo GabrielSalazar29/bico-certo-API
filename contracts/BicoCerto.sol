@@ -125,6 +125,20 @@ contract BicoCerto {
         );
     }
 
+    function cancelOpenJob(bytes32 _jobId) external {
+        IBicoCertoJobManager(registry.getJobManager()).cancelOpenJob(
+            _jobId,
+            msg.sender  // Cliente real
+        );
+    }
+
+    function rejectCompletedJob(bytes32 _jobId) external {
+        IBicoCertoJobManager(registry.getJobManager()).rejectCompletedJob(
+            _jobId,
+            msg.sender  // Cliente real
+        );
+    }
+
     // ====
     // SISTEMA DE DISPUTAS
     // ====
@@ -153,7 +167,7 @@ contract BicoCerto {
     // ====
 
     function rateClient(bytes32 _jobId, uint8 _rating) external {
-        IBicoCertoReputation(registry.getReputation()).rateClient(_jobId, _rating);
+        IBicoCertoReputation(registry.getReputation()).rateClient(msg.sender,_jobId, _rating);
     }
 
     // ====

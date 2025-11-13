@@ -98,6 +98,7 @@ interface IBicoCertoJobManager {
     event JobCompleted(bytes32 indexed jobId, address indexed provider, uint256 timestamp);
     event JobApproved(bytes32 indexed jobId, address indexed client, uint256 amount, uint256 platformFee);
     event JobCancelled(bytes32 indexed jobId, address indexed client);
+    event JobRejected(bytes32 indexed jobId, address indexed client, uint256 timestamp);
     event JobDisputed(bytes32 indexed jobId, address indexed disputer);
     event RatingGiven(bytes32 indexed jobId, address indexed rater, uint8 rating);
 
@@ -134,8 +135,9 @@ interface IBicoCertoJobManager {
     function completeJobFor(bytes32 _jobId, address _sender) external;
     function approveJobFor(bytes32 _jobId, address _sender, uint8 _rating) external;
     function cancelJobFor(bytes32 _jobId, address _sender) external;
+    function cancelOpenJob(bytes32 _jobId, address _sender) external;
+    function rejectCompletedJob(bytes32 _jobId, address _sender) external;
 
-    // ========== FUNÇÕES DE ATUALIZAÇÃO (para contratos confiáveis) ==========
     function updateJobStatus(bytes32 _jobId, JobStatus _newStatus) external;
     function updateJobClientRating(bytes32 _jobId, uint8 _rating) external;
     function updateJobProviderRating(bytes32 _jobId, uint8 _rating) external;
@@ -155,46 +157,5 @@ interface IBicoCertoJobManager {
     function getProviderProposals(address _provider) external view returns (bytes32[] memory);
     function getOpenJobs() external view returns (bytes32[] memory);
     function getActiveProposalsForJob(bytes32 _jobId) external view returns (Proposal[] memory);
-
-//    // Buscar jobs por status específico
-//    function getJobsByStatus(JobStatus _status) external view returns (bytes32[] memory);
-//    // Jobs do usuário filtrados por status
-//    function getUserJobsByStatus(address _user, JobStatus _status) external view returns (bytes32[] memory);
-//    // Contar jobs por status
-//    function getJobCountByStatus(JobStatus _status) external view returns (uint256);
-//    // Jobs onde o usuário é cliente
-//    function getJobsAsClient(address _client) external view returns (bytes32[] memory);
-//    // Jobs onde o usuário é provedor
-//    function getJobsAsProvider(address _provider) external view returns (bytes32[] memory);
-//    // Jobs ativos do usuário (em andamento)
-//    function getActiveUserJobs(address _user) external view returns (bytes32[] memory);
-//    // Jobs completados do usuário
-//    function getCompletedUserJobs(address _user) external view returns (bytes32[] memory);
-//    // Total ganho por um provedor (jobs aprovados)
-//    function getTotalEarnings(address _provider) external view returns (uint256);
-//    // Total gasto por um cliente
-//    function getTotalSpent(address _client) external view returns (uint256);
-//    // Taxa total de plataforma arrecadada
-//    function getTotalPlatformFees() external view returns (uint256);
-//    // Taxa de conclusão de um provedor
-//    function getProviderCompletionRate(address _provider) external view returns (uint256);
-//    // Avaliação média de um usuário
-//    function getAverageRating(address _user, bool asProvider) external view returns (uint256);
-//    // Total de jobs criados/completados
-//    function getTotalJobsCount() external view returns (uint256 total, uint256 completed);
-//    // Propostas pendentes de um provedor
-//    function getPendingProposals(address _provider) external view returns (bytes32[] memory);
-//    // Propostas aceitas/rejeitadas de um provedor
-//    function getProposalsByStatus(address _provider, ProposalStatus _status) external view returns (bytes32[] memory);
-//    // Menor/maior proposta em um job
-//    function getProposalRange(bytes32 _jobId) external view returns (uint256 min, uint256 max);
-//    // Proposta média de um job
-//    function getAverageProposalAmount(bytes32 _jobId) external view returns (uint256);
-//    // Jobs por tipo de serviço
-//    function getJobsByServiceType(string memory _serviceType) external view returns (bytes32[] memory);
-//    // Tipos de serviço mais populares
-//    function getTopServiceTypes(uint256 _limit) external view returns (string[] memory, uint256[] memory);
-//    // Jobs abertos por tipo de serviço
-//    function getOpenJobsByServiceType(string memory _serviceType) external view returns (bytes32[] memory);
 
 }

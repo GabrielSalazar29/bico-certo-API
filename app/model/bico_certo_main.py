@@ -218,6 +218,16 @@ class BicoCerto:
 
         return self.build_transaction(from_address, function, amount_wei)
 
+    def prepare_rate_client_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+            rating: int,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para avaliar o cliente após aprovação do job."""
+        function = self.contract.functions.rateClient(job_id, rating)
+        return self.build_transaction(from_address, function)
+
     def prepare_reject_proposal_transaction(
             self,
             from_address: str,

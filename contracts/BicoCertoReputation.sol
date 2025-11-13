@@ -144,14 +144,14 @@ contract BicoCertoReputation is IBicoCertoReputation {
         }
     }
 
-    function rateClient(bytes32 _jobId, uint8 _rating)
+    function rateClient(address _provider, bytes32 _jobId, uint8 _rating)
         external
         notPaused
     {
         IBicoCertoJobManager jobManager = IBicoCertoJobManager(registry.getJobManager());
         IBicoCertoJobManager.Job memory job = jobManager.getJob(_jobId);
 
-        require(job.provider == msg.sender, "Apenas prestador");
+        require(job.provider == _provider, "Apenas prestador");
         require(job.status == IBicoCertoJobManager.JobStatus.Approved, "Trabalho deve estar aprovado");
         require(job.providerRating == 0, "Ja avaliado");
         require(_rating > 0 && _rating <= 5, "Avaliacao deve estar entre 1 e 5");

@@ -540,13 +540,22 @@ async def approve_job(
         try:
             job = bico_certo.get_job(job_id_bytes)
 
-            JobNotificationService.notify_job_approved(
+            # JobNotificationService.notify_job_approved(
+            #     db=db,
+            #     provider_address=job.provider,
+            #     job_id=request.job_id,
+            #     ipfs_hash=job.ipfs_hash,
+            #     client_name=current_user.full_name,
+            #     rating=request.rating
+            # )
+
+            # Após aprovar o job com sucesso
+            JobNotificationService.notify_provider_to_rate_client(
                 db=db,
                 provider_address=job.provider,
                 job_id=request.job_id,
                 ipfs_hash=job.ipfs_hash,
-                client_name=current_user.full_name,
-                rating=request.rating
+                client_name=current_user.full_name
             )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
@@ -1260,3 +1269,45 @@ async def get_reputation(address: str):
             status_code=400,
             detail=f"Erro ao buscar jobs abertos: {str(e)}"
         )
+
+@router.post("/rate-client", response_model=APIResponse)
+async def rate_client(
+    request: ApproveJobRequest,  # Reutilizando o schema existente (job_id, rating, password)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Avalia um cliente após a aprovação do job. Ação realizada pelo prestador.
+    """
+    wallet_service = WalletService(db)
+    wallet = wallet_service.get_wallet(current_user.id)
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Você precisa de uma carteira para esta ação.")
+
+    success, message, private_key = wallet_service.get_private_key(current_user.id, request.password)
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+        signer = TransactionSigner()
+        job_id_bytes = bytes.fromhex(request.job_id)
+        transaction = bico_certo.prepare_rate_client_transaction(
+            wallet["address"],
+            job_id_bytes,
+            request.rating
+        )
+
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+
+        if receipt['status'] != 1:
+            raise HTTPException(status_code=400, detail="Transação falhou na blockchain.")
+
+        return APIResponse.success_response(
+            data={"transaction_hash": tx_hash.hex(), "rating": request.rating},
+            message="Cliente avaliado com sucesso!"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao avaliar cliente: {str(e)}")

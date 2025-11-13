@@ -25,7 +25,7 @@ interface IBicoCertoReputation {
 
     function updateUserStats(address _user, uint256 _amount, bool _isProvider) external;
 
-    function rateClient(bytes32 _jobId, uint8 _rating) external;
+    function rateClient(address _provider, bytes32 _jobId, uint8 _rating) external;
 
     function getProviderAverageRating(address _provider) external view returns (uint256);
 

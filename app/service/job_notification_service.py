@@ -121,6 +121,50 @@ class JobNotificationService:
             print(f"Erro ao enviar notificação: {e}")
 
     @staticmethod
+    def notify_provider_to_rate_client(
+            db: Session,
+            provider_address: str,
+            job_id: str,
+            ipfs_hash: str,
+            client_name: str
+    ):
+        """Notifica provider para avaliar o cliente após aprovação"""
+        try:
+            user = JobNotificationService._get_user_by_wallet_address(db, provider_address)
+
+            if not user:
+                return
+
+            job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"Avalie {client_name} pelo trabalho '{job_title}'"
+
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="rate_client_prompt",
+                    message=notification_message
+                )
+            )
+
+            if user.fcm_token:
+                from ..service.fcm_service import FCMService
+
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Trabalho Aprovado! ⭐",
+                    body=f"Avalie {client_name} pelo trabalho '{job_title}'",
+                    data={
+                        "type": "rate_client_prompt",
+                        "job_id": job_id,
+                        "client_name": client_name,
+                        "job_title": job_title,  # ✅ ADICIONAR TÍTULO
+                    }
+                )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
+    @staticmethod
     def notify_proposal_accepted(
             db: Session,
             provider_address: str,
