@@ -328,6 +328,24 @@ class BicoCerto:
         """Prepara a transação para cancelar um job."""
         function = self.contract.functions.cancelJob(job_id)
         return self.build_transaction(from_address, function)
+
+    def prepare_cancel_open_job_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para cancelar um job."""
+        function = self.contract.functions.cancelOpenJob(job_id)
+        return self.build_transaction(from_address, function)
+
+    def prepare_reject_job_transaction(
+            self,
+            from_address: str,
+            job_id: bytes,
+    ) -> Dict[str, Any]:
+        """Prepara a transação para cancelar um job."""
+        function = self.contract.functions.rejectCompletedJob(job_id)
+        return self.build_transaction(from_address, function)
     
     def get_job_from_receipt(self, tx_receipt) -> Optional[Dict[str, Any]]:
         """Extrai o 'jobId' do evento 'JobCreated'."""

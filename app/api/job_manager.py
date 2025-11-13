@@ -607,6 +607,97 @@ async def cancel_job(
         raise HTTPException(status_code=400, detail=f"Erro ao cancelar o job: {str(e)}")
 
 
+@router.post("/cancel-open", response_model=APIResponse)
+async def cancel_open_job(
+        request: CancelJobRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Cancela um job que ainda está no estado 'Open'. Ação realizada pelo cliente.
+    """
+    wallet_service = WalletService(db)
+    wallet = wallet_service.get_wallet(current_user.id)
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Você precisa de uma carteira para esta ação.")
+
+    success, message, private_key = wallet_service.get_private_key(current_user.id, request.password)
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+        signer = TransactionSigner()
+        job_id_bytes = bytes.fromhex(request.job_id)
+        transaction = bico_certo.prepare_cancel_open_job_transaction(wallet["address"], job_id_bytes)
+
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+
+        if receipt['status'] != 1:
+            raise HTTPException(status_code=400, detail="Transação falhou na blockchain.")
+
+        return APIResponse.success_response(
+            data={"transaction_hash": tx_hash.hex(), "status": "cancelled"},
+            message="Job cancelado com sucesso e fundos estornados."
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao cancelar o job: {str(e)}")
+
+
+@router.post("/reject-job", response_model=APIResponse)
+async def reject_job(
+        request: CancelJobRequest,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Rejeita um job que está no estado 'Completed'. Ação realizada pelo cliente.
+    """
+    wallet_service = WalletService(db)
+    wallet = wallet_service.get_wallet(current_user.id)
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Você precisa de uma carteira para esta ação.")
+
+    success, message, private_key = wallet_service.get_private_key(current_user.id, request.password)
+    if not success:
+        raise HTTPException(status_code=401, detail=message)
+
+    try:
+        signer = TransactionSigner()
+        job_id_bytes = bytes.fromhex(request.job_id)
+        transaction = bico_certo.prepare_reject_job_transaction(wallet["address"], job_id_bytes)
+
+        account = Account.from_key(private_key)
+        signed_tx = account.sign_transaction(transaction)
+        tx_hash = signer.w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        receipt = signer.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
+
+        if receipt['status'] != 1:
+            raise HTTPException(status_code=400, detail="Transação falhou na blockchain.")
+
+        try:
+            job = bico_certo.get_job(job_id_bytes)
+
+            JobNotificationService.notify_job_rejected(
+                db=db,
+                provider_address=job.provider,
+                job_id=request.job_id,
+                ipfs_hash=job.ipfs_hash,
+                client_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
+        return APIResponse.success_response(
+            data={"transaction_hash": tx_hash.hex(), "status": "rejected"},
+            message="Job rejeitado com sucesso, status voltou para 'em progresso'."
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erro ao cancelar o job: {str(e)}")
+
+
 @router.post("/accept-proposal", response_model=APIResponse)
 async def accept_proposal(
         request: AnswerProposalRequest,

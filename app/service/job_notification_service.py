@@ -206,6 +206,47 @@ class JobNotificationService:
             print(f"Erro ao enviar notificação: {e}")
 
     @staticmethod
+    def notify_job_rejected(
+            db: Session,
+            provider_address: str,
+            job_id: str,
+            ipfs_hash: str,
+            client_name: str
+    ):
+        """Notifica provider que seu Job não está completo"""
+        try:
+            user = JobNotificationService._get_user_by_wallet_address(db, provider_address)
+
+            if not user:
+                return
+
+            job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{client_name} não concorda que o trabalho '{job_title}' foi finalizado... Status voltou para 'Em Progresso'"
+
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="rejected",
+                    message=notification_message
+                )
+            )
+
+            if user.fcm_token:
+                FCMService.send_notification(
+                    token=user.fcm_token,
+                    title="Finalização do Trabalho Negada! 😢",
+                    body=notification_message,
+                    data={
+                        "type": "job_status_change",
+                        "job_id": job_id,
+                        "status": "rejected",
+                    }
+                )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")
+
+    @staticmethod
     def notify_proposal_rejected(
             db: Session,
             provider_address: str,
