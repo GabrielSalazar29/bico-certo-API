@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict, Any
+from typing import List, Dict
 from datetime import datetime, timedelta
 from collections import defaultdict
 
 from starlette.responses import StreamingResponse
 
 from app.auth.dependencies import get_current_user
-from app.ipfs.ipfs_service import IPFSService
+from app.service.ipfs_service import IPFSService
 from app.model.bico_certo_main import BicoCerto, JobStatus
 from app.model.wallet import Wallet
 from sqlalchemy.orm import Session

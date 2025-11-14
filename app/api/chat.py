@@ -121,7 +121,7 @@ async def get_room_info(
         job_title = 'Chat'
         try:
             from ..model.bico_certo_main import BicoCerto
-            from ..ipfs.ipfs_service import IPFSService
+            from app.service.ipfs_service import IPFSService
 
             bico_certo = BicoCerto()
             job_obj = bico_certo.get_job(bytes.fromhex(room.job_id))

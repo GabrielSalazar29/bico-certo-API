@@ -1,6 +1,6 @@
 import ipfshttpclient
 from typing import Dict, Any, Optional, Tuple
-from ..config.settings import settings
+from app.config.settings import settings
 
 
 class IPFSService:

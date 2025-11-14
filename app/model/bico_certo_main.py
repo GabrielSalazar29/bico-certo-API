@@ -15,8 +15,8 @@ class JobStatus(Enum):
     IN_PROGRESS = 4
     COMPLETED = 5
     APPROVED = 6
-    CANCELLED = 7
-    DISPUTED = 8
+    DISPUTED = 7
+    CANCELLED = 8
     REFUNDED = 9
 
 

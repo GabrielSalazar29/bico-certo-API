@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from ..model.user import User
 from ..model.wallet import Wallet
 from .fcm_service import FCMService
-from ..ipfs.ipfs_service import IPFSService
+from app.service.ipfs_service import IPFSService
 import asyncio
 
 

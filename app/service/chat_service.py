@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 
-from ..ipfs.ipfs_service import IPFSService
+from app.service.ipfs_service import IPFSService
 from ..model.bico_certo_main import BicoCerto
 from ..model.chat_model import ChatRoom, ChatMessage, MessageStatus, ChatNotification
 from ..model.user import User

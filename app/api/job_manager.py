@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Optional
-import base64, binascii
 
 from eth_account import Account
 
-from app.ipfs.ipfs_service import IPFSService
-from app.model.bico_certo_main import BicoCerto, ProposalStatus, JobStatus, Reputation
+from app.service.ipfs_service import IPFSService
+from app.model.bico_certo_main import BicoCerto, ProposalStatus, Reputation
 from app.model.wallet import Wallet
 from app.schema.job_manager import (
     CreateJobRequest, CreateOpenJobRequest, SubmitProposalRequest, AcceptJobRequest, AnswerProposalRequest,
@@ -589,6 +588,7 @@ async def approve_job(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erro ao aprovar o job: {str(e)}")
 
+
 @router.post("/cancel", response_model=APIResponse)
 async def cancel_job(
         request: CancelJobRequest,
@@ -1007,14 +1007,20 @@ async def get_job(
         proposals = bico_certo.contract.functions.getJobProposals(bytes.fromhex(job_id)).call()
         for proposal_id in proposals:
             proposal_data = bico_certo.contract.functions.getProposal(proposal_id).call()
-            if ProposalStatus(proposal_data[6]) == ProposalStatus.PENDING:
-                pending_proposal_count += 1
+            if job_data["openForProposals"]:
+                if ProposalStatus(proposal_data[6]) == ProposalStatus.PENDING:
+                    pending_proposal_count += 1
+            else:
+                if ProposalStatus(proposal_data[6]) == ProposalStatus.ACCEPTED:
+                    success, message, metadata_proposal = ipfs_service.get_job_data(proposal_data[7])
+                    accepted_proposal = metadata_proposal["data"]
 
     return APIResponse.success_response(
         data={
             **job_data,
             "pending_proposal_count": pending_proposal_count,
-            "metadata": metadata
+            "metadata": metadata,
+            "accepted_proposal": accepted_proposal
         },
         message="Informações do Job recuperadas com sucesso"
     )
