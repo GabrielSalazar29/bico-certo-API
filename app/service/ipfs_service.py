@@ -54,18 +54,24 @@ class IPFSService:
         except Exception as e:
             print(f"Erro ao adicionar bytes ao IPFS: {str(e)}")
             return False, f"Erro ao adicionar bytes ao IPFS: {str(e)}", None
-        
-    def get_bytes_image_data(self, cid: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+
+    def get_bytes_image_data(self, cid: str) -> Tuple[bool, str, Optional[bytes]]:
         """
-        Recupera dados do job do IPFS usando o CID
-        Retorna: (sucesso, mensagem, dados)
+        Recupera bytes de imagem do IPFS usando o CID
+        Retorna: (sucesso, mensagem, bytes)
         """
         try:
-            data = self.client.get_bytes(cid)
+            # Usar 'cat' para recuperar bytes do IPFS
+            image_bytes = self.client.cat(cid)
 
-            return True, "Dados recuperados do IPFS", data
+            if not image_bytes:
+                return False, "Nenhum dado retornado do IPFS", None
+
+            print(f"Imagem recuperada do IPFS: {cid} ({len(image_bytes)} bytes)")
+            return True, "Imagem recuperada do IPFS com sucesso", image_bytes
 
         except Exception as e:
+            print(f"Erro ao recuperar imagem do IPFS: {str(e)}")
             return False, f"Erro ao recuperar do IPFS: {str(e)}", None
 
 

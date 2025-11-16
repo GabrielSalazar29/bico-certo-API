@@ -1,3 +1,4 @@
+import base64
 from datetime import datetime
 from typing import Optional
 
@@ -185,16 +186,17 @@ async def create_open_job(
             detail="Você precisa criar uma carteira primeiro"
         )
 
-
-        image_cids = []
-    
-    
-    
     image_cids = []
     if request.job_images:
             for base64_string in request.job_images:
                 try:
-                    sucess_img, msg_img, cid = ipfs_service.add_bytes_to_ipfs(base64_string) 
+                    if ',' in base64_string:
+                        base64_string = base64_string.split(',')[1]
+
+                        # Decodificar base64 para bytes
+                    image_bytes = base64.b64decode(base64_string)
+
+                    sucess_img, msg_img, cid = ipfs_service.add_bytes_to_ipfs(image_bytes)
 
                     if not sucess_img:
                         raise HTTPException(status_code=500, detail=f"Erro ao salvar imagens no IPFS: {msg_img}")
@@ -301,6 +303,41 @@ async def create_open_job(
         raise HTTPException(
             status_code=400,
             detail=f"Erro ao criar job: {str(e)}"
+        )
+
+
+@router.get("/image/{cid}", response_model=APIResponse)
+async def get_job_image(
+        cid: str,
+        current_user: User = Depends(get_current_user)
+):
+    """
+    Retorna uma imagem do job em base64
+    """
+    try:
+        success, message, image_bytes = ipfs_service.get_bytes_image_data(cid)
+
+        if not success or image_bytes is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Erro ao recuperar imagem: {message}"
+            )
+
+        # Converter bytes para base64
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+
+        return APIResponse.success_response(
+            data={
+                "cid": cid,
+                "image_base64": image_base64
+            },
+            message="Imagem recuperada com sucesso"
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Erro ao buscar imagem: {str(e)}"
         )
 
 @router.post("/submit-proposal", response_model=APIResponse)
