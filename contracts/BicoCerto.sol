@@ -226,65 +226,31 @@ contract BicoCerto {
     // FUNÇÕES DE REPUTAÇÃO - NOVAS FUNÇÕES SEPARADAS
     // ====
 
-    /**
-     * @notice Retorna a avaliação média do usuário como Provider (prestador)
-     * @param _provider Endereço do prestador
-     * @return Média com 2 casas decimais (ex: 425 = 4.25 estrelas)
-     */
     function getProviderAverageRating(address _provider) external view returns (uint256) {
         return IBicoCertoReputation(registry.getReputation()).getProviderAverageRating(_provider);
     }
-
-    /**
-     * @notice Retorna a avaliação média do usuário como Cliente
-     * @param _client Endereço do cliente
-     * @return Média com 2 casas decimais (ex: 425 = 4.25 estrelas)
-     */
     function getClientAverageRating(address _client) external view returns (uint256) {
         return IBicoCertoReputation(registry.getReputation()).getClientAverageRating(_client);
     }
 
-    /**
-     * @notice Retorna o perfil completo do usuário como Provider
-     * @param _provider Endereço do prestador
-     * @return averageRating Média de avaliações (ex: 425 = 4.25)
-     * @return totalRatings Total de avaliações recebidas
-     * @return totalJobs Total de trabalhos realizados
-     * @return totalEarned Total ganho em Wei
-     */
     function getProviderProfile(address _provider) external view returns (
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalEarned
+        uint256 totalEarned,
+        uint256 joinedAt
     ) {
         return IBicoCertoReputation(registry.getReputation()).getProviderProfile(_provider);
     }
 
-    /**
-     * @notice Retorna o perfil completo do usuário como Cliente
-     * @param _client Endereço do cliente
-     * @return averageRating Média de avaliações (ex: 425 = 4.25)
-     * @return totalRatings Total de avaliações recebidas
-     * @return totalJobs Total de trabalhos contratados
-     * @return totalSpent Total gasto em Wei
-     */
     function getClientProfile(address _client) external view returns (
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalSpent
+        uint256 totalSpent,
+        uint256 joinedAt
     ) {
         return IBicoCertoReputation(registry.getReputation()).getClientProfile(_client);
-    }
-
-    /**
-     * @notice Mantém compatibilidade com versão anterior (retorna dados como Provider)
-     * @param _user Endereço do usuário
-     * @return User Estrutura de dados do usuário
-     */
-    function getUserProfile(address _user) external view returns (IBicoCertoReputation.User memory) {
-        return IBicoCertoReputation(registry.getReputation()).getUserProfile(_user);
     }
 
     function calculatePlatformFee(uint256 _amount) external view returns (uint256) {

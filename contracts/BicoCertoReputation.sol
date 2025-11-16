@@ -197,7 +197,8 @@ contract BicoCertoReputation is IBicoCertoReputation {
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalEarned
+        uint256 totalEarned,
+        uint256 joinedAt
     ) {
         UserReputation storage userRep = userReputations[_provider];
 
@@ -211,7 +212,8 @@ contract BicoCertoReputation is IBicoCertoReputation {
             averageRating,
             userRep.totalRatingsAsProvider,
             userRep.totalJobsAsProvider,
-            userRep.totalEarned
+            userRep.totalEarned,
+            userRep.joinedAt
         );
     }
 
@@ -220,7 +222,8 @@ contract BicoCertoReputation is IBicoCertoReputation {
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalSpent
+        uint256 totalSpent,
+        uint256 joinedAt
     ) {
         UserReputation storage userRep = userReputations[_client];
 
@@ -234,29 +237,8 @@ contract BicoCertoReputation is IBicoCertoReputation {
             averageRating,
             userRep.totalRatingsAsClient,
             userRep.totalJobsAsClient,
-            userRep.totalSpent
+            userRep.totalSpent,
+            userRep.joinedAt
         );
-    }
-
-    // Mantém compatibilidade com getUserProfile (retorna dados como Provider)
-    function getUserProfile(address _user) external view returns (User memory) {
-        UserReputation storage userRep = userReputations[_user];
-
-        User memory user;
-        user.joinedAt = userRep.joinedAt;
-        user.totalJobs = userRep.totalJobsAsProvider;
-        user.totalEarned = userRep.totalEarned;
-        user.totalSpent = userRep.totalSpent;
-        user.successfulJobs = userRep.totalJobsAsProvider;
-
-        // Calcula reputationScore baseado na média como Provider (convertido para escala 0-1000)
-        if (userRep.totalRatingsAsProvider > 0) {
-            uint256 average = (userRep.sumRatingsAsProvider * 100) / userRep.totalRatingsAsProvider;
-            user.reputationScore = (average * 1000) / 500; // Converte média (0-500) para escala 0-1000
-        } else {
-            user.reputationScore = 500; // Score inicial neutro
-        }
-
-        return user;
     }
 }

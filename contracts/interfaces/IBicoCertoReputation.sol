@@ -35,15 +35,15 @@ interface IBicoCertoReputation {
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalEarned
+        uint256 totalEarned,
+        uint256 joinedAt
     );
 
     function getClientProfile(address _client) external view returns (
         uint256 averageRating,
         uint256 totalRatings,
         uint256 totalJobs,
-        uint256 totalSpent
+        uint256 totalSpent,
+        uint256 joinedAt
     );
-
-    function getUserProfile(address _user) external view returns (User memory);
 }

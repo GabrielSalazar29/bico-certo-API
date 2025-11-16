@@ -1369,15 +1369,21 @@ async def get_job_active_proposals(job_id: str):
 
 
 @router.get("/reputation", response_model=APIResponse)
-async def get_reputation(address: str):
+async def get_reputation(address: str, client: bool):
     """
     Recupera as informações da reputação de um Usuario
     """
     try:
-        # Buscar jobs abertos do contrato
-        reputation = Reputation(bico_certo.contract.functions.getUserProfile(
-            address
-        ).call()).to_dict()
+        if client:
+            reputation = Reputation(bico_certo.contract.functions.getClientProfile(
+                address
+            ).call()).to_dict()
+        else:
+            reputation = Reputation(bico_certo.contract.functions.getProviderProfile(
+                address
+            ).call()).to_dict()
+
+        print(reputation)
 
         return APIResponse.success_response(
             data={
@@ -1390,6 +1396,7 @@ async def get_reputation(address: str):
             status_code=400,
             detail=f"Erro ao buscar jobs abertos: {str(e)}"
         )
+
 
 @router.post("/rate-client", response_model=APIResponse)
 async def rate_client(

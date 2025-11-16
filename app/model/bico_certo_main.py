@@ -71,20 +71,18 @@ class Job:
 @dataclass
 class Reputation:
     """Represents a job in the BicoCerto system"""
+    averageRating: int
+    totalRatings: int
     totalJobs: int
-    successfulJobs: int
-    totalEarned: int
-    totalSpent: int
-    reputationScore: int
+    total_cash_busy: int
     joinedAt: int
 
     def __init__(self, obj: tuple):
-        self.totalJobs = obj[0]
-        self.successfulJobs = obj[1]
-        self.totalEarned = obj[2]
-        self.totalSpent = obj[3]
-        self.reputationScore = obj[4]
-        self.joinedAt = obj[5]
+        self.averageRating = obj[0]
+        self.totalRatings = obj[1]
+        self.totalJobs = obj[2]
+        self.total_cash_busy = obj[3]
+        self.joinedAt = obj[4]
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte o Job para dicionário"""
