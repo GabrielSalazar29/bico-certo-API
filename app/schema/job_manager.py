@@ -1,5 +1,4 @@
 from typing import Optional, List
-
 from pydantic import BaseModel, Field
 
 
@@ -21,10 +20,10 @@ class CreateJobRequest(BaseModel):
 
 class CreateOpenJobRequest(BaseModel):
     """Request para criar job aberto para propostas"""
-    title: str = Field(..., min_length=3, max_length=100)
-    description: str = Field(..., min_length=10, max_length=2000)
-    category: str = Field(..., min_length=3, max_length=50)
-    location: str = Field(..., min_length=3, max_length=100)
+    title: str = Field(..., max_length=100)
+    description: str = Field(..., max_length=2000)
+    category: str = Field(..., max_length=50)
+    location: str = Field(..., max_length=100)
     job_images: List[str] = Field([], description="Coded images list in Base64")
     max_budget_eth: float = Field(..., gt=0, description="Orçamento máximo em ETH")
     deadline: str = Field(..., description="Formato DD-MM-YYYY")
@@ -39,7 +38,7 @@ class SubmitProposalRequest(BaseModel):
     """Request para submeter proposta"""
     job_id: str = Field(..., description="ID do job (hex)")
     amount_eth: float = Field(..., gt=0, description="Valor da proposta em ETH")
-    description: str = Field(..., min_length=10, max_length=1000)
+    description: str = Field(..., max_length=1000)
     estimated_time_days: int = Field(..., gt=0, description="Tempo estimado em dias")
     password: str = Field(..., description="Senha do usuário")
 

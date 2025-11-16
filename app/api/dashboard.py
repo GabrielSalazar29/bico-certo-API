@@ -1213,7 +1213,7 @@ def _get_recent_jobs(jobs: List[Dict], limit: int = 10, db: Session = None) -> L
                 "title": full_title,
                 "provider": provider_name,
                 "date": datetime.fromtimestamp(job_obj.created_at).strftime('%Y-%m-%d'),
-                "value": float(job_obj.amount),
+                "value": float(job_obj.amount + job_obj.platform_fee),
                 "status": status.name.lower()
             })
 

@@ -275,6 +275,43 @@ def _mask_contact(user: User, settings_2fa: TwoFactorSettings) -> str:
     return ""
 
 
+@router.get("/{user_id}/profile-picture", response_model=APIResponse)
+async def get_user_profile_picture(
+        user_id: str,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    """
+    Retorna a URL da foto de perfil de um usuário
+    """
+
+    try:
+        # Buscar usuário no banco
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="Usuário não encontrado"
+            )
+
+        return APIResponse.success_response(
+            data={
+                "user_id": user.id,
+                "profile_pic_url": user.profile_pic_url,
+                "full_name": user.full_name,
+            },
+            message="Foto de perfil recuperada com sucesso"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao buscar foto de perfil: {str(e)}"
+        )
+
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(request: RefreshRequest, db: Session = Depends(get_db)):
     # Buscar refresh token

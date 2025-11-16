@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from ..config.database import Base
 import uuid
+
+from ..config.settings import fuso_local
 
 
 class PasswordResetToken(Base):
@@ -33,7 +37,7 @@ class PasswordResetToken(Base):
     two_fa_verified = Column(Boolean, default=False)
 
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
 
     # Relationship
     user = relationship("User", back_populates="password_reset_tokens")

@@ -8,3 +8,4 @@ test.db
 *.log
 .env
 app/firebase-credentials.json
+/uploads/

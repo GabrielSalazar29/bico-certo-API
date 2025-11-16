@@ -1,8 +1,12 @@
+from datetime import datetime
+
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from ..config.database import Base
 import uuid
+
+from ..config.settings import fuso_local
 
 
 class User(Base):
@@ -18,8 +22,8 @@ class User(Base):
     profile_pic_url = Column(String(255), nullable=True)
 
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
+    updated_at = Column(DateTime(timezone=True), onupdate=datetime.now(fuso_local))
     
     # Security
     failed_login_attempts = Column(Integer, default=0)

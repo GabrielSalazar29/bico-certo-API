@@ -3,8 +3,9 @@ from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from .api import auth, job_manager, two_factor, password_recovery, wallet, dashboard, chat
+from .api import auth, job_manager, two_factor, password_recovery, wallet, dashboard, chat, upload
 from .config.database import engine, Base
 from .config.settings import fuso_local
 from .config.settings import settings
@@ -28,6 +29,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+os.makedirs("uploads/profile_pictures", exist_ok=True)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads"
 )
 
 
@@ -77,6 +86,7 @@ app.include_router(job_manager.router)
 # app.include_router(payment_gateway.router)
 app.include_router(chat.router)
 app.include_router(dashboard.router)
+app.include_router(upload.router)
 
 
 # Root endpoint

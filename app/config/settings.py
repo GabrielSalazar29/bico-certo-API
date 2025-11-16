@@ -61,6 +61,8 @@ class Settings(BaseSettings):
     IPFS_API_URL: str = "/ip4/127.0.0.1/tcp/5001"  # API do IPFS
     IPFS_GATEWAY_URL: str = "http://localhost:8080"  # Gateway para acessar arquivos
 
+    BASE_URL: str
+
     class Config:
         env_file = ".env"
 

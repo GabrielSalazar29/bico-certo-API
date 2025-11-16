@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import Column, String, Boolean, DateTime, Text, Float, JSON, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -5,6 +7,8 @@ from sqlalchemy.sql import func
 from ..config.database import Base
 import uuid
 import enum
+
+from ..config.settings import fuso_local
 
 
 class WalletStatus(enum.Enum):
@@ -50,8 +54,8 @@ class Wallet(Base):
     last_balance_update = Column(DateTime(timezone=True))
 
     # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
+    updated_at = Column(DateTime(timezone=True), onupdate=datetime.now(fuso_local))
 
     # Relationships
     user = relationship("User", back_populates="wallet", uselist=False)
