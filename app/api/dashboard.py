@@ -634,7 +634,7 @@ async def get_client_dashboard(
         for job_id in user_jobs:
             try:
                 job_data = bico_certo.contract.functions.getJob(job_id).call()
-                if job_data[1].lower() == user_address.lower():
+                if job_data[1].lower() == user_address.lower() and JobStatus(job_data[9]) != JobStatus.CANCELLED:
                     client_jobs.append({'id': job_id, 'data': job_data})
             except Exception:
                 continue

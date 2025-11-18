@@ -224,7 +224,6 @@ async def create_open_job(
         "created_at": datetime.now(fuso_local).isoformat()
     }
 
-
     success, message, ipfs_cid = ipfs_service.add_data_to_ipfs(job_metadata)
 
     if not success:
@@ -983,7 +982,7 @@ async def cancel_proposal(
         raise HTTPException(status_code=401, detail=message)
 
     try:
-
+        proposal = bico_certo.contract.functions.getProposal(bytes.fromhex(request.proposal_id)).call()
         transaction = bico_certo.prepare_cancel_proposal_transaction(
             wallet.address,
             bytes.fromhex(request.proposal_id)
@@ -1004,6 +1003,18 @@ async def cancel_proposal(
                 status_code=400,
                 detail="Transação falhou na blockchain"
             )
+
+        try:
+            job = bico_certo.get_job(proposal[1])
+            JobNotificationService.notify_cancel_proposal(
+                db=db,
+                client_address=job.client,
+                job_id=proposal[1].hex(),
+                ipfs_hash=job.ipfs_hash,
+                provider_name=current_user.full_name
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação de nova proposta: {e}")
 
         return APIResponse.success_response(
             data={
@@ -1038,7 +1049,7 @@ async def get_job(
             status_code=500,
             detail=f"Erro ao recuperar dados do IPFS: {message}"
         )
-
+    accepted_proposal = None
     pending_proposal_count = 0
     if job_data["total_proposals"] > 0:
         proposals = bico_certo.contract.functions.getJobProposals(bytes.fromhex(job_id)).call()
@@ -1081,8 +1092,6 @@ async def get_open_jobs(
 
             success, message, metadata = ipfs_service.get_job_data(job_data["ipfs_hash"])
             success_image, message_image, metadata_image = ipfs_service.get_job_data(metadata["data"])
-            print(f"\n\n{metadata_image}\n\n")
-
 
             if success:
                 # Filtrar por categoria se fornecida
@@ -1419,8 +1428,6 @@ async def get_reputation(address: str, client: bool):
             reputation = Reputation(bico_certo.contract.functions.getProviderProfile(
                 address
             ).call()).to_dict()
-
-        print(reputation)
 
         return APIResponse.success_response(
             data={

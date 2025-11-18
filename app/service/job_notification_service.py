@@ -453,3 +453,32 @@ class JobNotificationService:
                 )
         except Exception as e:
             print(f"Erro ao enviar notificação: {e}")
+
+    @staticmethod
+    def notify_cancel_proposal(
+            db: Session,
+            client_address: str,
+            job_id: str,
+            ipfs_hash: str,
+            provider_name: str
+    ):
+        """Notifica cliente que recebeu uma nova proposta"""
+        try:
+            user = JobNotificationService._get_user_by_wallet_address(db, client_address)
+
+            if not user:
+                return
+
+            job_title = JobNotificationService._get_job_title(ipfs_hash)
+            notification_message = f"{provider_name} removeu uma proposta para '{job_title}'"
+
+            asyncio.create_task(
+                JobNotificationService._send_websocket_update(
+                    user_id=user.id,
+                    job_id=job_id,
+                    status="proposal_removed",
+                    message=notification_message
+                )
+            )
+        except Exception as e:
+            print(f"Erro ao enviar notificação: {e}")

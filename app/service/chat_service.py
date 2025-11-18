@@ -100,6 +100,10 @@ class ChatService:
 
             success, message, metadata = ipfs_service.get_job_data(job_data['ipfs_hash'])
 
+            # Buscar dados do outro participante
+            other_user_id = room.provider_id if room.client_id == user_id else room.client_id
+            other_user = self.db.query(User).filter(User.id == other_user_id).first()
+
             result.append({
                 "room_id": room.id,
                 "job_id": room.job_id,
@@ -107,9 +111,9 @@ class ChatService:
                 "is_client": is_client,
                 "is_active": room.is_active,
                 "other_user": {
-                    "id": room.provider.id,
-                    "name": room.provider.full_name,
-                    "email": room.provider.email
+                    "id": other_user.id if other_user else None,
+                    "name": other_user.full_name if other_user else "Usuário",
+                    "email": other_user.email if other_user else None
                 },
                 "last_message": {
                     "id": last_message.id if last_message else None,

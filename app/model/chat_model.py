@@ -21,24 +21,23 @@ class ChatRoom(Base):
     __tablename__ = "chat_rooms"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    job_id = Column(String, nullable=False, index=True)  # ID do job na blockchain
+    job_id = Column(String, nullable=False, index=True)
 
     # Participantes
     client_id = Column(String, ForeignKey("users.id"), nullable=False)
-    provider_id = Column(String, ForeignKey("users.id"), nullable=True)  # Pode ser null para jobs abertos
+    provider_id = Column(String, ForeignKey("users.id"), nullable=True)
 
     # Status
     is_active = Column(Boolean, default=True)
     last_message_at = Column(DateTime(timezone=True))
 
-    # Metadata
-    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
-    updated_at = Column(DateTime(timezone=True), onupdate=datetime.now(fuso_local))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(fuso_local))
+    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(fuso_local))
 
     # Contadores para otimização
     total_messages = Column(String, default="0")
-    unread_client = Column(String, default="0")  # Mensagens não lidas pelo cliente
-    unread_provider = Column(String, default="0")  # Mensagens não lidas pelo provider
+    unread_client = Column(String, default="0")
+    unread_provider = Column(String, default="0")
 
     # Relationships
     client = relationship("User", foreign_keys=[client_id], backref="client_chats")
@@ -56,17 +55,16 @@ class ChatMessage(Base):
 
     # Conteúdo
     message = Column(Text, nullable=False)
-    message_type = Column(String, default="text")  # text, image, file, proposal_update
+    message_type = Column(String, default="text")
 
     # Metadata para tipos especiais
-    json_metadata = Column(Text)  # JSON para dados adicionais (ex: proposta aceita, valor alterado)
+    json_metadata = Column(Text)
 
     # Status
     status = Column(SQLEnum(MessageStatus), default=MessageStatus.SENT)
 
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
-    delivered_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(fuso_local))
+    delivered_at = Column(DateTime(timezone=True), default=lambda: datetime.now(fuso_local))
     read_at = Column(DateTime(timezone=True))
 
     # Relationships
@@ -95,8 +93,7 @@ class ChatNotification(Base):
     push_sent = Column(Boolean, default=False)
     push_sent_at = Column(DateTime(timezone=True))
 
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), default=datetime.now(fuso_local))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(fuso_local))
 
     # Relationships
     user = relationship("User", backref="chat_notifications")
